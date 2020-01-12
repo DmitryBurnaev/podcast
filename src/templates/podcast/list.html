@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">{% trans %}Dashboard{% endtrans %}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans %}podcasts{% endtrans %}</li>
+</ol>
+{% endblock %}
+
+
+{% block content %}
+    <form class="form-inline" action="{{ url('podcast_list') }}" method="post">
+        <div class="form-group row no-margin-left">
+            <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12 no-padding-left no-padding-right">
+                <!--suppress HtmlFormInputWithoutLabel -->
+                <input type="text" class="form-control" id="podcastName" placeholder="{% trans %}Name{% endtrans %}" name="name">
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12 no-padding-right small-screen-no-padding">
+                <button type="submit" class="btn btn-info ">{% trans %}Add Podcast{% endtrans %}</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <h6 class="border-bottom border-gray pb-2 mb-0">{% trans %}Podcasts{% endtrans %}</h6>
+        {% for podcast in podcasts %}
+            <div class="media text-muted pt-2 hide-text-content border-bottom border-gray podcast-item">
+                <a href="{{ url('podcast_details', podcast_id=podcast.id) }}">
+                    <img class="podcast-cover-small rounded float-left" src="{% if podcast.logo_path %}{{ static(podcast.logo_path) }} {% else %}{{ static('images/cover-default.jpg') }}{% endif %}" alt="podcast">
+                </a>
+                <p class="media-body pb-3 mb-0 small lh-125 text-justify">
+                    <strong class="d-block text-gray-dark"><a class="text-black-link" href="{{ url('podcast_details', podcast_id=podcast.id) }}">{{ podcast.name }}</a></strong>
+                    {{ podcast.description }}
+                </p>
+            </div>
+        {% endfor %}
+    </div>
+
+
+
+{% endblock %}

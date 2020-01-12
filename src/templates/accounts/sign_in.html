@@ -1,0 +1,15 @@
+{% extends 'accounts/base.html' %}
+{% block content %}
+
+<form class="form-signin" method="post" action="{{ url('sign_in') }}" >
+    <h1 class="h3 mb-3 font-weight-normal">{% trans %}Please sign in{% endtrans %}</h1>
+    <label for="username" class="sr-only">{% trans %}Username{% endtrans %}</label>
+    <input type="text" name="username" id="username" class="form-control" placeholder="{% trans %}Username{% endtrans %}" required="" autofocus="">
+    <label for="inputPassword" class="sr-only">{% trans %}Password{% endtrans %}</label>
+    <input type="password" name="password" id="inputPassword" class="form-control" placeholder="{% trans %}Password{% endtrans %}" required="">
+    <button class="btn btn-lg btn-primary btn-block" type="submit">{% trans %}Sign In{% endtrans %}</button>
+    or <a href="{{ url('sign_up') }}" >{% trans %}sign-up{% endtrans %}</a>
+    <p class="mt-5 mb-3 text-muted">© 2019</p>
+</form>
+
+{% endblock %}

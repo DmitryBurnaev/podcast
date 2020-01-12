@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+    <channel>
+        <title>{{ podcast.name }}</title>
+        <link>{{ settings.SITE_URL }}</link>
+        <language>ru</language>
+        <copyright>Creative Commons - Attribution, Noncommercial, No Derivative Works 3.0 License.
+        </copyright>
+        <itunes:author>PodcastOwner</itunes:author>
+        <itunes:subtitle>"{{ podcast.title }}" audio tracks</itunes:subtitle>
+        <description>{{ podcast.description }}</description>
+        <itunes:explicit>no</itunes:explicit>
+        <itunes:image href="{{ settings.SITE_URL }}/static/{% if podcast.logo_path %}{{ podcast.logo_path }}{% else %}{{ 'images/cover-default.jpg' }}{% endif %}"/>
+        <itunes:keywords>python,web,develop</itunes:keywords>
+        <media:copyright>Creative Commons - Attribution, Noncommercial, No Derivative Works 3.0 License.</media:copyright>
+        <media:thumbnail url="{{ settings.SITE_URL }}/static/{% if podcast.logo_path %}{{ podcast.logo_path }}{% else %}{{ 'images/cover-default.jpg' }}{% endif %}"/>
+        <media:keywords>audio</media:keywords>
+        <media:category scheme="http://www.itunes.com/dtds/podcast-1.0.dtd">Technology/Tech News</media:category>
+        <itunes:owner>
+            <itunes:email>podcast.owner@gmail.com</itunes:email>
+            <itunes:name>PodcastOwner</itunes:name>
+        </itunes:owner>
+        <itunes:summary>Most interest tracks for listening in the future</itunes:summary>
+        <itunes:category text="Tech News"/>
+        {% for episode in episodes %}
+        <item>
+            <title>{{ episode.title }}</title>
+            <description>{{ episode.description }}</description>
+            <link>{{ episode.watch_url }}</link>
+            <guid>{{ episode.watch_url }}</guid>
+            <pubDate>{{ episode.published_at.strftime('%a, %d %b %Y %H:%M:%S %Z') }}</pubDate>
+            <itunes:author>{{ episode.author }}</itunes:author>
+            <itunes:summary>{{ episode.description }}</itunes:summary>
+            <itunes:image href="{{ episode.safe_image_url }}"/>
+            <enclosure url="{{ episode.content_url }}" type="{{ episode.content_type }}" length="{{ episode.file_size }}"/>
+            <author>{{ episode.author }}</author>
+            <media:content url="{{ episode.content_url }}" fileSize="{{ episode.file_size }}" type="{{ episode.content_type }}"/>
+            <itunes:explicit>no</itunes:explicit>
+        </item>
+        {% endfor %}
+        <media:credit role="author">PodcastOwner</media:credit>
+        <media:rating>nonadult</media:rating>
+        <media:description type="plain">{{ podcast.description }}</media:description>
+    </channel>
+</rss>

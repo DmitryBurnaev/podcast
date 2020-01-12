@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans %}Dashboard{% endtrans %}</a></li>
+        <li class="breadcrumb-item"><a href="{{ url('podcast_list') }}">{% trans %}podcasts{% endtrans %}</a></li>
+        <li class="breadcrumb-item"><a href="{{ url('podcast_details', podcast_id=podcast.id) }}">{{ podcast.name }}</a></li>
+    </ol>
+{% endblock %}
+
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h4 class="h4 caption">{{ episode.title }}</h4>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group mr-2">
+                {% if episode.status == episode.STATUS_DOWNLOADING %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDownloadModal" disabled>
+                        {% trans %}Downloading...{% endtrans %}
+                    </button>
+                {% else %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDownloadModal">
+                        {% trans %}Download{% endtrans %}
+                    </button>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#updateEpisode">
+                    {% trans %}Edit{% endtrans %}
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDeletePodcastModal">
+                    {% trans %}Delete{% endtrans %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-2 text-center">
+            <img src="{{ episode.image_url }}" alt="podcast" class="img-thumbnail mb-3">
+        </div>
+        <div class="col-md-9">
+            <dl class="row">
+                <dt class="col-sm-3">{% trans %}Created at{% endtrans %}</dt>
+                <dd class="col-sm-9">{{ episode.created_at|datetime_format }}</dd>
+
+                <dt class="col-sm-3">{% trans %}Published at{% endtrans %}</dt>
+                <dd class="col-sm-9">
+                    {{ episode.published_at|datetime_format }}
+                    {% if episode.status == episode.STATUS_PUBLISHED %}
+                        <small class="text-right text-info ml-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round"
+                                 class="feather feather-check-circle">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </small>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">{% trans %}Author{% endtrans %}</dt>
+                <dd class="col-sm-9">{{ episode.author }}</dd>
+
+                <dt class="col-sm-3">{% trans %}Length{% endtrans %}</dt>
+                <dd class="col-sm-9">{{ episode.length|human_length }}</dd>
+
+                <dt class="col-sm-3">{% trans %}Youtube Link{% endtrans %}</dt>
+                <dd class="col-sm-9  hide-text-content">
+                    <div class="card card-body bg-light text-justify p-0 border-0">
+                        <a href="{{ episode.watch_url }}">{{ episode.watch_url }}</a>
+                    </div>
+                </dd>
+
+            </dl>
+        </div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-sm-12">
+            <div class="card card-body bg-light text-justify p-0 border-0">
+                {{ episode.description }}
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="modal" tabindex="-1" role="dialog" id="updateEpisode">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ url('episode_details', podcast_id=podcast.id, episode_id=episode.id) }}"
+                      method="post" accept-charset="utf-8">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">{% trans %}Update episode{% endtrans %}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group  mb-0">
+                            <label for="title" class="col-form-label mb-0 pb-1 pt-2">{% trans %}Title{% endtrans %}:</label>
+                            <input id="title" name="title" type="text" class="form-control"
+                                   value="{{ episode.title }}"/>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="author" class="col-form-label mb-0 pb-1 pt-2">{% trans %}Author{% endtrans %}</label>
+                            <input id="author" class="form-control" name="author"
+                                   type="text" value="{{ episode.author }}"/>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="watch_url" class="col-form-label mb-0 pb-1 pt-2">{% trans %}Youtube Link{% endtrans %}</label>
+                            <input id="watch_url" class="form-control" name="watch_url"
+                                   type="text" value="{{ episode.watch_url }}"/>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label for="description" class="col-form-label mb-0 pb-1 pt-2">{% trans %}Description{% endtrans %}</label>
+                            <textarea class="form-control" id="description" rows="6" name="description">{{ episode.description }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">{% trans %}Cancel{% endtrans %}</button>
+                        <button type="submit" class="btn btn-info btn-sm">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="beSureDeletePodcastModal" tabindex="-1" role="dialog"
+         aria-labelledby="beSureDeletePodcastModal" aria-hidden="true">
+        <div class="modal-dialog modal-sm mt-5" role="document">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0">
+                    <h6 class="modal-title" id="exampleModalLabel">{% trans %}Delete episode?{% endtrans %}</h6>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">{% trans %}No{% endtrans %}</button>
+                    <a class="btn btn-sm btn-danger" href="{{ url('episode_delete', podcast_id=podcast.id, episode_id=episode.id) }}">{% trans %}Yes, delete{% endtrans %}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="beSureDownloadModal" tabindex="-1" role="dialog"
+         aria-labelledby="beSureDeletePodcastModal" aria-hidden="true">
+        <div class="modal-dialog modal-sm mt-5" role="document">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0">
+                    <h6 class="modal-title" id="exampleModalLabel">{% trans %}Download episode?{% endtrans %}</h6>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">{% trans %}No{% endtrans %}</button>
+                    <a class="btn btn-sm btn-success" href="{{ url('episode_download', podcast_id=podcast.id, episode_id=episode.id) }}">{% trans %}Yes{% endtrans %}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

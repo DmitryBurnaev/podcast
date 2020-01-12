@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">{% trans %}Dashboard{% endtrans %}</a></li>
+    <li class="breadcrumb-item"><a href="{{ url('podcast_list') }}">{% trans %}podcasts{% endtrans %}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ podcast.name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h3 class="h3 caption">{{ podcast.name }}</h3>
+        <div class="btn-toolbar mb-2 mb-md-0 {% if mobile_app_web_view %}d-none{% endif %}">
+          <div class="btn-group mr-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" id="updatePodcastBtn" data-toggle="modal" data-target="#updatePodcast">{% trans %}Edit{% endtrans %}</button>
+              {% if not mobile_app_web_view %}
+                  <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureRSSModal">
+                        <span class="d-none d-sm-block">{% trans %}Update RSS{% endtrans %}</span>
+                        <span class="d-block d-sm-none"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDeleteModal">{% trans %}Delete{% endtrans %}</button>
+              {% endif %}
+          </div>
+        </div>
+    </div>
+    <div class="row">
+        {% if not mobile_app_web_view %}
+        <div class="col-md-3 text-center">
+            <img src="{% if podcast.logo_path %}{{ static(podcast.logo_path) }} {% else %}{{ static('images/cover-default.jpg') }}{% endif %}" alt="podcast" class="img-thumbnail mb-3">
+        </div>
+        {% endif %}
+        <div class="col-md-9">
+            <dl class="row">
+                <dt class="col-sm-3">{% trans %}Created at{% endtrans %}</dt>
+                <dd class="col-sm-9">{{ podcast.created_at|datetime_format }}</dd>
+                {% if not mobile_app_web_view %}
+                <dt class="col-sm-3">{% trans %}RSS link{% endtrans %}</dt>
+                <dd class="col-sm-9 hide-text-content">
+                    <div class="card card-body bg-light text-justify p-0 border-0">
+                        <a href="{{ podcast.publish_id|rss_link }}">{{ podcast.publish_id|rss_link }}</a>
+                    </div>
+                </dd>
+                {% endif %}
+                <dt class="col-sm-3">{% trans %}Description{% endtrans %}</dt>
+                <dd class="col-sm-9">
+                    <p>{{ podcast.description }}</p>
+                </dd>
+
+            </dl>
+        </div>
+    </div>
+
+    <form class="form-inline" action="{{ url('episode_create', podcast_id=podcast.id) }}"
+          method="post">
+        <div class="form-group row no-margin-left">
+            <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12 no-padding-left no-padding-right">
+                <input type="text" class="form-control" id="youtubeLink" name="youtube_link" placeholder="{% trans %}Youtube Link{% endtrans %}" autofocus>
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12 no-padding-right small-screen-no-padding">
+                <button type="submit" class="btn btn-info ">{% trans %}Add Episode{% endtrans %}</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <h6 class="border-bottom border-gray pb-2 mb-0">{% trans %}Episodes{% endtrans %}</h6>
+        {% for episode in podcast.episodes %}
+            <div class="media text-muted pt-2 hide-text-content  border-bottom border-gray episode-item">
+                <a href="{{ url('episode_details', podcast_id=podcast.id, episode_id=episode.id) }}">
+                    <img class="podcast-cover-small rounded float-left "
+                         src="{{ episode.image_url }}"
+                         alt="podcast cover"
+                         onerror="this.src='{{ static('images/cover-default.jpg') }}'"
+                    >
+                </a>
+                <p class="media-body pb-3 mb-0 small lh-125">
+                    <a class="text-black-link" href="{{ url('episode_details', podcast_id=episode.podcast_id, episode_id=episode.id) }}">{{ episode.title }}</a>
+                </p>
+                {% if episode.status == episode.STATUS_PUBLISHED %}
+                <small class="d-block text-right text-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round"
+                         class="feather feather-check-circle">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </small>
+                {% elif episode.status == episode.STATUS_DOWNLOADING %}
+                    <small class="d-block text-right text-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" focusable="false" width="24" height="24" style="-ms-transform: rotate(360deg); -webkit-transform: rotate(360deg); transform: rotate(360deg);" class="feather feather-check-circle" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24"><g fill="none" stroke="#626262" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 17l4 4l4-4"/><path d="M12 12v9"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></g><rect x="0" y="0" width="24" height="24" fill="rgba(0, 0, 0, 0)" /></svg>
+                    </small>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+<div class="modal" tabindex="-1" role="dialog" id="updatePodcast">
+    <div class="modal-dialog mt-lg-5" role="document">
+        <div class="modal-content">
+            <form action="{{ url('podcast_details', podcast_id=podcast.id) }}" method="post"
+                  accept-charset="utf-8">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans %}Update podcast{% endtrans %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-0">
+                        <label for="publish_id" class="col-form-label mb-1 pb-1">{% trans %}Publish Id{% endtrans %}:</label>
+                        <input id="publish_id" class="form-control" name="publish_id" disabled
+                               type="text" value="{{ podcast.publish_id }}"/>
+                    </div>
+                    <div class="form-group mb-0 {% if mobile_app_web_view %}d-block{% else %}d-none d-sm-block{% endif %}">
+                        <label for="rss_link" class="col-form-label mb-0 pb-1">{% trans %}RSS link{% endtrans %}:</label>
+                        <input id="rss_link" class="form-control" name="rss_link" disabled type="text" value="{{ podcast.publish_id|rss_link }}"/>
+{#                        <button type="button" class="form-control btn btn-sm btn-outline-secondary no-box-shadow btn-33" id="copyLinkBtn" data-rss-link="{{ podcast.publish_id|rss_link }}">#}
+{#                            {% trans %}Copy Link{% endtrans %}#}
+{#                        </button>#}
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label for="name" class="col-form-label mb-1 pb-1">{% trans %}Name{% endtrans %}:</label>
+                        <input id="name" name="name" type="text" class="form-control"
+                               value="{{ podcast.name }}"/>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="description" class="col-form-label mb-0 pb-1">{% trans %}Description{% endtrans %}:</label>
+                        <textarea class="form-control " id="description" rows="5"
+                                  name="description">{{ podcast.description }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">{% trans %}Cancel{% endtrans %}</button>
+                    <button type="submit" class="btn btn-info btn-sm ">{% trans %}Save{% endtrans %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="beSureDeleteModal" tabindex="-1" role="dialog"
+     aria-labelledby="beSureDeleteModal" aria-hidden="true">
+    <div class="modal-dialog modal-sm mt-5" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0">
+                <h6 class="modal-title" id="exampleModalLabel">{% trans %}Delete podcast{% endtrans %}?</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-footer p-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">{% trans %}No{% endtrans %}</button>
+                <a class="btn btn-sm btn-danger" href="{{ url('podcast_delete', podcast_id=podcast.id) }}">{% trans %}Yes{% endtrans %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="beSureRSSModal" tabindex="-1" role="dialog"
+     aria-labelledby="beSureRSSModal" aria-hidden="true">
+    <div class="modal-dialog modal-sm mt-5" role="document">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0">
+                <h6 class="modal-title" id="exampleModalLabel">{% trans %}Regenerate RSS{% endtrans %}?</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-footer p-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">{% trans %}No{% endtrans %}</button>
+                <a class="btn btn-sm btn-success" href="{{ url('podcast_rss_update', podcast_id=podcast.id) }}">{% trans %}Yes{% endtrans %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

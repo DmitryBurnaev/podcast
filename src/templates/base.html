@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Dmitry Burnaev">
+    <title>
+        {% trans %}Podcasts -{% endtrans %}
+        {% block title %}{% trans %}Main{% endtrans %}{% endblock %}
+    </title>
+
+    <link rel="stylesheet" href="{{ static('css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ static('css/dashboard.css') }}">
+    <link rel="shortcut icon" href="{{ static('images/favicon.ico') }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ static('images/favicon.png') }}" type="image/png">
+<body class="bg-light">
+
+
+<div aria-live="polite" aria-atomic="true" style="position: relative; z-index: 1200">
+  <!-- Position it -->
+  <div class="toast-container">
+    {% for kind, message in get_messages(request) %}
+        <div class="toast system-toast" role="alert" aria-live="assertive" aria-atomic="true"
+             data-animation="true" data-delay="5000">
+            <div class="toast-header">
+                <strong class="mr-auto">{{ message.title }} ({{ kind }})</strong>
+                <button type="button" class="ml-2 mb-1 close" data-dismiss="toast"
+                        aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="toast-body">
+                {{ message.message }}
+            </div>
+        </div>
+    {% endfor %}
+      <div id="copyToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-animation="true" data-delay="5000">
+        <div class="toast-body">
+            <span class="mr-auto"> {% trans %}Text copied{% endtrans %}</span>
+            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+      </div>
+
+  </div>
+</div>
+{% if not mobile_app_web_view %}
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+    <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="/">{% trans %}Your Podcasts{% endtrans %}</a>
+    <ul class="navbar-nav px-3">
+        <li>
+            <select class="btn btn-sm btn-outline-secondary dropdown-toggle language-select" id="languageSelect" aria-label="Language select">
+{#                <option selected="">{% trans %}Language{% endtrans %}</option>#}
+                <option value="en">English</option>
+                <option value="ru">Russian</option>
+            </select>
+        </li>
+        <li class="nav-item text-nowrap">
+            <a class="nav-link" href="{{ url('sign_out') }}">{% trans %}Sign out{% endtrans %}</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<div class="container-fluid">
+  <div class="row">
+
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+      <div class="sidebar-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link {% if "/podcasts/" == request.path %} active {% endif %}" href="{{ url('podcast_list') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-layers"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                {% trans %}Podcast list{% endtrans %}
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if "/progress/" == request.path %} active {% endif %}" href="{{ url('progress') }}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-loader"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+              {% trans %}In progress{% endtrans %}
+            </a>
+          </li>
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>{% trans %}Podcasts{% endtrans %}</span>
+          <a class="d-flex align-items-center text-muted" href="#" data-toggle="modal" data-target="#createPodcast">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          </a>
+        </h6>
+        <ul class="nav flex-column mb-2">
+            {% for podcast in podcasts %}
+                <li class="nav-item">
+                    <a class="nav-link {% if url('podcast_details', podcast_id=podcast.id)|string == request.path %} active {% endif %}"
+                       href="{{ url('podcast_details', podcast_id=podcast.id) }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-cast"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><line x1="2" y1="20" x2="2" y2="20"></line></svg>
+                        {{ podcast.name }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+      </div>
+    </nav>
+
+    <main role="{% if mobile_app_web_view %}mobile_app_web_view{% else %}main{% endif %}" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+        {% if not mobile_app_web_view %}
+        <nav aria-label="breadcrumb">
+            {% block breadcrumbs %}{% endblock %}
+        </nav>
+        {% endif %}
+        <div class="container" id="main">
+            <div class="row">
+                <div class="col-lg-12">
+                    {% block content %}
+                        <h4>This is suppose to be in the main content</h4>
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </main>
+  </div>
+</div>
+    <div class="modal" tabindex="-1" role="dialog" id="createPodcast">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="{{ url('podcast_list') }}" method="post" accept-charset="utf-8">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{% trans %}Create new podcast{% endtrans %}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="podcastName" placeholder="{% trans %}Podcast Name{% endtrans %}" name="name">
+                        </div>
+                        <div class="form-group  mb-0">
+                            <textarea class="form-control" id="description" name="description" placeholder="{% trans %}Description{% endtrans %}"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">{% trans %}Cancel{% endtrans %}</button>
+                        <button type="submit" class="btn btn-info btn-sm">{% trans %}Add Podcast{% endtrans %}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+<script src="{{ static('js/jquery-3.3.1.min.js') }}"></script>
+<script src="{{ static('js/jquery.cookie.js') }}"></script>
+<script src="{{ static('js/bootstrap.min.js') }}"></script>
+<script src="{{ static('js/dashboard.js') }}"></script>
+{% block extra_scripts%}{% endblock %}
+</body></html>

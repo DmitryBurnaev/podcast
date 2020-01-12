@@ -1,0 +1,245 @@
+body {
+  font-size: .875rem;
+}
+
+.feather {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+}
+.bg-light {
+    background-color: #f8f9fa!important;
+}
+/*
+ * Sidebar
+ */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100; /* Behind the navbar */
+  padding: 48px 0 0; /* Height of navbar */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: calc(100vh - 48px);
+  padding-top: .5rem;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+}
+
+@supports ((position: -webkit-sticky) or (position: sticky)) {
+  .sidebar-sticky {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  color: #333;
+}
+
+.sidebar .nav-link .feather {
+  margin-right: 4px;
+  color: #999;
+}
+
+.sidebar .nav-link.active {
+  color: #007bff;
+}
+
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+  color: inherit;
+}
+
+.sidebar-heading {
+  font-size: .75rem;
+  text-transform: uppercase;
+}
+
+ul.navbar-nav {
+    flex-direction: row;
+    align-items: center;
+}
+
+ul.navbar-nav li{
+    margin-right: 10px;
+}
+
+
+/*
+ * Content
+ */
+
+[role="main"] {
+  padding-top: 90px; /* Space for fixed navbar */
+}
+
+@media (min-width: 768px) {
+  [role="main"] {
+    padding-top: 48px; /* Space for fixed navbar */
+  }
+}
+
+/*
+ * Navbar
+ */
+
+.navbar-brand {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  font-size: 1rem;
+  background-color: rgba(0, 0, 0, .25);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+}
+
+.navbar .form-control {
+  padding: .75rem 1rem;
+  border-width: 0;
+  border-radius: 0;
+}
+
+.form-control-dark {
+  color: #fff;
+  background-color: rgba(255, 255, 255, .1);
+  border-color: rgba(255, 255, 255, .1);
+}
+
+.form-control-dark:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+}
+.episode-progress-cover-small{
+    width: 85%;
+    min-width: 50px;
+    max-width: 60px;
+}
+a.text-black-link{
+  color: #292c2f;
+}
+a.text-black-link:visited{
+  color: #292c2f;
+}
+a.text-black-link:hover{
+  text-decoration: none;
+}
+
+
+.form-inline .form-group button{
+    width: 100%;
+}
+
+.no-padding-left{
+    padding-left: 0;
+}
+.no-padding-right{
+    padding-right: 0;
+}
+.no-margin-left{
+    margin-left: 0;
+}
+.form-inline .form-group {
+    width: 100%;
+}
+.form-inline .form-control {
+    display: inline-block;
+    width: 100%;
+    vertical-align: middle;
+}
+.hide-text-content{
+    overflow: hidden;
+
+}
+.breadcrumb{
+    margin-top: 15px;
+}
+.no-box-shadow{
+    box-shadow: none !important;
+}
+.modal-body input, .modal-body textarea{
+    font-size: 14px !important;
+}
+.toast{
+    display: none;
+    background-color: #f1f1f1;
+    min-width: 300px;
+}
+.toast-container{
+    position: fixed;
+    top: 10px;
+    right: 30px;
+}
+.podcast-cover{
+    width: 100%;
+    height: 250px;
+    background-color: #e4e4e4;
+    background-size: cover;
+}
+.episode-item{
+    min-height: 70px;
+}
+.podcast-item{
+    min-height: 100px;
+}
+.podcast-cover-small {
+  width: 70px;
+  margin-right: 10px;
+}
+.language-select{
+    height: 30px;
+}
+@media (min-width: 576px){
+    .form-inline button{
+        width: 100%;
+        padding-right: 0;
+    }
+}
+@media (max-width: 768px) {
+    .container{
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .breadcrumb{
+        margin-left: -15px;
+        margin-right: -15px;
+    }
+    .form-inline button{
+        margin-top: 10px;
+        width: 100%;
+    }
+    .small-screen-no-padding{
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+@media (max-width: 567px) {
+    .progress-title{
+        margin-top: 10px;
+        text-align: center;
+    }
+    .progress-dd{
+        margin-top: 5px;
+        margin-bottom: .75rem !important;
+    }
+    .btn-toolbar{width: 100%}
+    .btn-toolbar .btn-group{width: 100%}
+    .btn-toolbar .btn-group button.btn-33{width: 33%}
+    .align-items-center .caption{
+        width: 100%;
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .podcast-cover-small{
+        margin-top: 3px;
+    }
+    /*.toast{*/
+        /*min-width: 95%;*/
+    /*}*/
+}

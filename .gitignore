@@ -1,0 +1,11 @@
+*.py[code]
+
+.idea/
+.env
+venv/
+/static/
+/media/
+*.db
+*.log
+*.mp4
+*.webm

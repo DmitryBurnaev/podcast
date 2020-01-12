@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb">
+    <li class="breadcrumb-item active" aria-current="page">{% trans %}Dashboard{% endtrans %}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h3 class="h3 caption">{% trans %}Your podcasts{% endtrans %}</h3>
+        <div class="btn-toolbar mb-2 mb-md-0">
+          <div class="btn-group mr-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow" data-toggle="modal" data-target="#createPodcast">{% trans %}Add new{% endtrans %}</button>
+              <a class="btn btn-sm btn-outline-secondary no-box-shadow" href="{{ url('progress') }}" >{% trans %}Progress{% endtrans %}</a>
+          </div>
+        </div>
+    </div>
+
+    <div class="my-3 p-3 bg-white rounded shadow-sm">
+        <div class="row">
+            {% for podcast in podcasts %}
+                <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3">
+                    <div class="card mb-4 shadow-sm">
+                        <a href="{{ url('podcast_details', podcast_id=podcast.id) }}"><div class="podcast-cover" style="background-image: url('{% if podcast.logo_path %}{{ static(podcast.logo_path) }} {% else %}{{ static('images/cover-default.jpg') }}{% endif %}')"></div></a>
+                        <div class="card-body">
+                            <p class="media-body pb-3 mb-0 small lh-125">
+                                <strong class="d-block text-gray-dark">
+                                <a class="text-black-link" href="{{ url('podcast_details', podcast_id=podcast.id) }}">{{ podcast.name }}</a></strong>
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="btn-group w-100">
+{#                                    <a href="{{ url('podcast_details', podcast_id=podcast.id) }}" class="btn btn-sm btn-outline-secondary">#}
+{#                                        {% trans %}View{% endtrans %}#}
+{#                                    </a>#}
+                                    <button type="button" data-toggle="modal" data-target="#createEpisode" class="btn btn-sm btn-outline-secondary add-episode no-box-shadow" data-form-action="{{ url('episode_create', podcast_id=podcast.id) }}">
+                                        {% trans %}Add episode{% endtrans %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <div class="modal" tabindex="-1" role="dialog" id="createEpisode">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form method="post" accept-charset="utf-8" id="createEpisodeForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{% trans %}Add new episode{% endtrans %}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mb-0">
+                            <!--suppress HtmlFormInputWithoutLabel -->
+                            <input type="text" class="form-control" id="youtubeLink" placeholder="{% trans %}Youtube Link{% endtrans %}" name="youtube_link">
+                        </div>
+                    </div>
+                    <div class="modal-footer p-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">{% trans %}Cancel{% endtrans %}</button>
+                        <button type="submit" class="btn btn-info btn-sm">{% trans %}Add Episode{% endtrans %}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+{% endblock %}

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>podcasts - login</title>
+</head>
+<body>
+{% for kind, msg in get_messages(request) %}
+<div class="alert alert-{{ kind }}" role="alert">
+    {{ msg }}
+</div>
+{% endfor %}
+
+    <form action="{{ url('sign_in') }}" method="post" accept-charset="utf-8" enctype="application/x-www-form-urlencoded">
+        <label for="username">username</label>
+        <input id="username" name="username" type="text" value="" autofocus/><br>
+        <label for="password">password</label>
+        <input id="password" name="password" type="password" value=""/><br>
+        <input type="submit" value="login"/>
+    </form>
+
+</body>
+</html>
