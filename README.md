@@ -40,6 +40,13 @@ Technically project contains from 3 parts:
   + aliases for media files `<PATH_TO_PROJECT>/media/audio`
   + aliases for RSS files `<PATH_TO_PROJECT>/media/rss`
 
+##### Stack of technology
++ python 3.7
++ aiohttp
++ RQ (background tasks)
++ youtube-dl (download tracks from youtube)
++ redis (key-value storage + RQ)
+
 ### Install Project
 
 #### Prepare virtual environment
