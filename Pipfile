@@ -15,7 +15,7 @@ aioredis = "==1.2.0"
 aiopg = "==0.15.0"
 uvloop = "==0.12.2"
 
-Jinja2 = "==2.10"
+Jinja2 = "==2.10.1"
 python-dotenv = "==0.10.1"
 youtube_dl = "==2019.12.25"
 Cerberus = "==1.3"
