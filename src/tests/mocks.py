@@ -39,4 +39,22 @@ class MockYoutube:
         self.streams = MockStreams()
         self.init = Mock()
         self.prefetch = Mock()
-        # self.title = Mock(return_value="Test youtube video")
+        self.extract_info = Mock(return_value=self.info)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ...
+
+    @property
+    def info(self, *args, **kwargs):
+        return {
+            "id": self.video_id,
+            "title": self.title,
+            "description": self.description,
+            "webpage_url": self.watch_url,
+            "thumbnail": self.thumbnail_url,
+            "uploader": self.author,
+            "duration": self.length,
+        }

@@ -5,7 +5,7 @@ import time
 import uuid
 from collections import namedtuple
 from typing import Tuple
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from hashlib import blake2b
 
 import peewee_async
@@ -135,10 +135,24 @@ def episode(db_objects, episode_data):
 @pytest.fixture
 def mocked_youtube() -> MockYoutube:
     mock_youtube = MockYoutube()
-    patcher = patch("modules.podcast.views.YouTube.__new__", return_value=mock_youtube)
+    patcher = patch("modules.youtube.utils.youtube_dl.YoutubeDL.__new__", return_value=mock_youtube)
     patcher.start()
     yield patcher.kwargs["return_value"]
     del mock_youtube
+    patcher.stop()
+
+
+@pytest.fixture
+def mocked_redis() -> MockYoutube:
+    class MockRedisClient:
+        def __init__(self):
+            self.get_many = Mock(side_effect=ValueError())
+
+    mock_redis_client = MockRedisClient()
+    patcher = patch("common.redis.RedisClient.__new__", return_value=mock_redis_client)
+    patcher.start()
+    yield patcher.kwargs["return_value"]
+    del mock_redis_client
     patcher.stop()
 
 
