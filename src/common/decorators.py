@@ -1,7 +1,11 @@
+import logging
 from aiohttp import web
 
 from common.excpetions import BaseApplicationError
 from common.utils import redirect, add_message
+
+
+logger = logging.getLogger(__name__)
 
 
 def json_response(func):
@@ -44,13 +48,16 @@ def errors_wrapped(func):
     async def wrapped(self, *args, **kwargs):
         try:
             return await func(self, *args, **kwargs)
-        except BaseApplicationError as ex:
+        except Exception as ex:
             message = getattr(ex, "message", None) or str(ex)
             details = getattr(ex, "details", None)
             if details:
                 message = f"{message}: {details}"
 
-            add_message(self.request, message, kind="error")
+            if isinstance(ex, BaseApplicationError):
+                add_message(self.request, message, kind="error")
+
+            logger.exception(message)
             raise web.HTTPFound(self.request.path)
 
     return wrapped

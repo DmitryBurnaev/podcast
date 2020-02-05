@@ -12,7 +12,6 @@ from aiohttp import ClientResponse
 import settings
 from modules.accounts.models import User
 from modules.podcast import tasks
-from pytube import exceptions as pytube_exceptions
 
 from modules.podcast.models import Podcast, Episode
 from .conftest import generate_video_id, get_user_data, make_cookie
@@ -458,7 +457,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         },
     }
     response = await client.get(urls.progress_api, allow_redirects=False)
-    assert response.status == 200, f"Progress API is not available: {response.text}"
+    response_text = await response.text()
+    assert response.status == 200, f"Progress API is not available: {response_text}"
 
     expected_progress = [
         {

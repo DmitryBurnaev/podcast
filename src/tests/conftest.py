@@ -149,7 +149,7 @@ def mocked_redis() -> MockYoutube:
             self.get_many = Mock(side_effect=ValueError())
 
     mock_redis_client = MockRedisClient()
-    patcher = patch("common.redis.RedisClient.__new__", return_value=mock_redis_client)
+    patcher = patch("modules.youtube.utils.redis_client", return_value=mock_redis_client)
     patcher.start()
     yield patcher.kwargs["return_value"]
     del mock_redis_client

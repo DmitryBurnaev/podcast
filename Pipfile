@@ -32,6 +32,6 @@ black = "==19.10b0"
 flake8 = "==3.7.9"
 
 [requires]
-python_version = "3.7.4"
+python_version = "3.7.6"
 # sudo apt install ffmpeg
 # export LDFLAGS=$(pg_config --ldflags)

@@ -70,6 +70,7 @@ LOGGING = {
     },
     "loggers": {
         "modules": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "common": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
         "app": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
         "youtube_dl": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
         "rq.worker": {"handlers": ["console"], "level": "INFO", "propagate": False},
