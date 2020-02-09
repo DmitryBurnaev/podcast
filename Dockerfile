@@ -1,4 +1,4 @@
-FROM python:3.7.4-slim-buster
+FROM python:3.7.6-slim-buster
 WORKDIR /podcast
 
 COPY Pipfile /podcast

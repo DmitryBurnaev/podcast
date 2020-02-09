@@ -3,26 +3,7 @@ from hashlib import blake2b
 from unittest.mock import Mock
 
 
-class MockYoutubeStream:
-    filesize = 10
-    subtype = "mp4"
-
-
-class MockStreams:
-    streams = [MockYoutubeStream()]
-
-    def filter(self, **_):
-        return self
-
-    def order_by(self, *_):
-        return self
-
-    def all(self):
-        return self.streams
-
-
 class MockYoutube:
-    streams: MockStreams = None
     watch_url: str = None
     video_id: str = None
     description = "Test youtube video description"
@@ -36,7 +17,32 @@ class MockYoutube:
             key=bytes(str(time.time()), encoding="utf-8"), digest_size=6
         ).hexdigest()[:11]
         self.watch_url = f"https://www.youtube.com/watch?v={self.video_id}"
-        self.streams = MockStreams()
-        self.init = Mock()
-        self.prefetch = Mock()
-        # self.title = Mock(return_value="Test youtube video")
+        self.extract_info = Mock(return_value=self.info)
+        self.download = Mock()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        ...
+
+    @property
+    def info(self, *args, **kwargs):
+        return {
+            "id": self.video_id,
+            "title": self.title,
+            "description": self.description,
+            "webpage_url": self.watch_url,
+            "thumbnail": self.thumbnail_url,
+            "uploader": self.author,
+            "duration": self.length,
+        }
+
+
+class MockRedisClient:
+    def __init__(self, content=None):
+        self._content = content or {}
+        self.get_many = Mock(return_value=self._content)
+
+    async def async_get_many(self, *_, **__):
+        return self.get_many()

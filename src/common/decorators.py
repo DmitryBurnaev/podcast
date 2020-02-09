@@ -1,7 +1,11 @@
+import logging
 from aiohttp import web
 
 from common.excpetions import BaseApplicationError
 from common.utils import redirect, add_message
+
+
+logger = logging.getLogger(__name__)
 
 
 def json_response(func):

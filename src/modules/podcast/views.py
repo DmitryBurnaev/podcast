@@ -521,6 +521,7 @@ class ProgressView(web.View):
 
 class ProgressApiView(web.View):
     @login_required
+    @errors_wrapped
     async def get(self):
         podcast_items = {
             podcast.id: podcast

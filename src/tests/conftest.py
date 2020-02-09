@@ -16,7 +16,7 @@ from common.models import database
 from common.utils import database_init
 from modules.accounts.models import User
 from modules.podcast.models import Podcast, Episode
-from .mocks import MockYoutube
+from .mocks import MockYoutube, MockRedisClient
 
 
 def get_user_data() -> Tuple[str, str]:
@@ -135,10 +135,24 @@ def episode(db_objects, episode_data):
 @pytest.fixture
 def mocked_youtube() -> MockYoutube:
     mock_youtube = MockYoutube()
-    patcher = patch("modules.podcast.views.YouTube.__new__", return_value=mock_youtube)
+    patcher = patch(
+        "modules.youtube.utils.youtube_dl.YoutubeDL.__new__", return_value=mock_youtube
+    )
     patcher.start()
     yield patcher.kwargs["return_value"]
     del mock_youtube
+    patcher.stop()
+
+
+@pytest.fixture
+def mocked_redis() -> MockRedisClient:
+    mock_redis_client = MockRedisClient()
+    patcher = patch(
+        "modules.youtube.utils.RedisClient.__new__", return_value=mock_redis_client
+    )
+    patcher.start()
+    yield patcher.kwargs["return_value"]
+    del mock_redis_client
     patcher.stop()
 
 

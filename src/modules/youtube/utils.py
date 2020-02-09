@@ -10,7 +10,7 @@ import settings
 from modules.youtube.exceptions import YoutubeExtractInfoError
 from modules.podcast.models import Episode
 from common.utils import get_logger
-from common.redis import redis_client
+from common.redis import RedisClient
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,7 @@ def download_process_hook(event: dict):
     Allows to handle proccess of downloading and performing episode's file.
     It is called by `youtube_dl.YoutubeDL`
     """
-
+    redis_client = RedisClient()
     file_name = os.path.basename(event["filename"])
     event_key = get_redis_key(file_name)
     total_bytes = event.get("total_bytes") or event.get("total_bytes_estimate", 0)
@@ -133,9 +133,10 @@ async def get_youtube_info(youtube_link: str) -> YoutubeInfo:
 async def check_state(episodes: Iterable[Episode]) -> list:
     """ Allows to get info about download progress for requested episodes """
 
+    redis_client = RedisClient()
     file_names = {get_redis_key(episode.file_name) for episode in episodes}
     current_states = await redis_client.async_get_many(file_names, pkey="event_key")
-
+    logger.info(current_states)
     result = []
     for episode in episodes:
         file_name = episode.file_name

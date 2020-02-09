@@ -12,9 +12,9 @@ from aiohttp import ClientResponse
 import settings
 from modules.accounts.models import User
 from modules.podcast import tasks
-from pytube import exceptions as pytube_exceptions
 
 from modules.podcast.models import Podcast, Episode
+from youtube.exceptions import YoutubeExtractInfoError
 from .conftest import generate_video_id, get_user_data, make_cookie
 from .mocks import MockYoutube
 
@@ -88,13 +88,13 @@ async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_yo
 async def test_episodes__create__video_unavailable__fail(
     client, db_objects, podcast, urls, mocked_youtube
 ):
-    mocked_youtube.init.side_effect = pytube_exceptions.VideoUnavailable
+    mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError()
     request_data = {"youtube_link": mocked_youtube.watch_url}
     response = await client.post(
         urls.episodes_list, data=request_data, allow_redirects=False
     )
     response_messages = get_session_messages(response)
-    expected_messages = ["YouTube video is not available"]
+    expected_messages = ["Sorry.. Fetching YouTube video was failed"]
     assert response.status == 302
     assert response_messages == expected_messages
     assert response.headers["Location"] == urls.podcasts_details
@@ -105,7 +105,7 @@ async def test_episodes__create__video_unavailable__fail(
 async def test_episodes__create__youtube_unexpected_error__fail(
     client, db_objects, podcast, urls, mocked_youtube
 ):
-    mocked_youtube.init.side_effect = ValueError("Ooops")
+    mocked_youtube.extract_info.side_effect = ValueError("Ooops")
     request_data = {"youtube_link": mocked_youtube.watch_url}
     response = await client.post(
         urls.episodes_list, data=request_data, allow_redirects=False
@@ -127,7 +127,7 @@ async def test_episodes__create__incorrect_link__fail(
         urls.episodes_list, data=request_data, allow_redirects=False
     )
     response_messages = get_session_messages(response)
-    expected_messages = ["YouTube link is not correct"]
+    expected_messages = ["YouTube link is not correct: http://path.to-not-youtube.com"]
     assert response.status == 302
     assert response_messages == expected_messages
     assert response.headers["Location"] == urls.podcasts_details
@@ -169,6 +169,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     updated_description = f"Updated description for video {mocked_youtube.video_id}"
     mocked_youtube.title = updated_title
     mocked_youtube.description = updated_description
+    mocked_youtube.extract_info.return_value = mocked_youtube.info
 
     podcast_data["publish_id"] = str(time.time())
     another_podcast = await db_objects.create(Podcast, **podcast_data)
@@ -206,7 +207,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     assert created_episode.description == updated_description
 
     assert response_messages == expected_messages
-    mocked_youtube.prefetch.assert_called()
+    mocked_youtube.extract_info.assert_called()
 
 
 async def test_episodes__create__same_episode_in_other_podcast__youtube_video_unavailable__ok(
@@ -218,7 +219,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     urls,
     mocked_youtube: MockYoutube,
 ):
-    mocked_youtube.init.side_effect = pytube_exceptions.VideoUnavailable("Ooops")
+    mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError("Ooops")
 
     podcast_data["publish_id"] = str(time.time())
     another_podcast = await db_objects.create(Podcast, **podcast_data)
@@ -242,7 +243,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
 
     response_messages = get_session_messages(response)
     expected_messages = [
-        "YouTube video is not available",
+        "Sorry.. Fetching YouTube video was failed",
         "Episode will be copied from other episode with same video.",
         f"Downloading for youtube {created_episode.source_id} was started.",
     ]
@@ -391,37 +392,23 @@ async def test_episodes__create__mobile_redirect__ok(
     assert response.headers["Location"] == urls.progress
 
 
-async def test_episodes__create__no_sound_streams__fail(
-    client, db_objects, podcast, episode_data, urls, mocked_youtube
-):
-    mocked_youtube.streams.all = lambda: []
-    request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
-
-    response_messages = get_session_messages(response)
-    expected_messages = ["Sorry, but video has not audio in mp4 format"]
-
-    assert response.status == 302
-    assert response_messages == expected_messages
-    assert response.headers["Location"] == urls.podcasts_details
-    with pytest.raises(peewee.DoesNotExist):
-        await db_objects.get(Episode, watch_url=mocked_youtube.watch_url)
-
-
 async def test_episodes__progress__several_podcasts__filter_by_status__ok(
-    client, db_objects, podcast, podcast_data, episode_data, urls, mocked_youtube
+    client, db_objects, podcast, podcast_data, episode_data, urls, mocked_redis
 ):
     podcast_data["publish_id"] = str(time.time())
     podcast_1 = podcast
     podcast_2 = await db_objects.create(Podcast, **podcast_data)
+    src_id_1 = (generate_video_id(),)
+    src_id_2 = (generate_video_id(),)
+    src_id_3 = (generate_video_id(),)
+    src_id_4 = (generate_video_id(),)
 
     podcast_1__episode_data__status_new = {
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_1,
+            "file_name": f"file_name_{src_id_1}",
             "status": Episode.STATUS_NEW,
             "file_size": 1 * 1024 * 1024,
         },
@@ -430,7 +417,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_2,
+            "file_name": f"file_name_{src_id_2}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 2 * 1024 * 1024,
         },
@@ -439,7 +427,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_3,
+            "file_name": f"file_name_{src_id_3}",
             "status": Episode.STATUS_NEW,
             "file_size": 1 * 1024 * 1024,
         },
@@ -448,7 +437,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_4,
+            "file_name": f"file_name_{src_id_4}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 4 * 1024 * 1024,
         },
@@ -462,12 +452,23 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         Episode, **podcast_2__episode_data__status_downloading
     )
 
+    mocked_redis.get_many.return_value = {}
     response = await client.get(urls.progress, allow_redirects=False)
     assert response.status == 200, "Progress view is not available"
-    with patch("os.path.getsize", return_value=(1024 * 1024)):
-        response = await client.get(urls.progress_api, allow_redirects=False)
 
-    assert response.status == 200, f"Progress API is not available: {response.text}"
+    mocked_redis.get_many.return_value = {
+        p1_episode_downloading.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 2 * 1024 * 1024,
+        },
+        p2_episode_downloading.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 4 * 1024 * 1024,
+        },
+    }
+    response = await client.get(urls.progress_api, allow_redirects=False)
+    response_text = await response.text()
+    assert response.status == 200, f"Progress API is not available: {response_text}"
 
     expected_progress = [
         {
@@ -499,7 +500,7 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 
 
 async def test_episodes__progress__filter_by_user__ok(
-    unauth_client, db_objects, podcast, podcast_data, episode_data, urls, mocked_youtube
+    unauth_client, db_objects, podcast, podcast_data, episode_data, urls, mocked_redis
 ):
     username, password = get_user_data()
     other_user = await db_objects.create(User, username=username, password=password)
@@ -509,12 +510,15 @@ async def test_episodes__progress__filter_by_user__ok(
     podcast_data["created_by"] = other_user.id
     podcast_1 = podcast
     podcast_2 = await db_objects.create(Podcast, **podcast_data)
+    source_id_1 = generate_video_id()
+    source_id_2 = generate_video_id()
 
     podcast_1__episode_data__requested_user = {
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": source_id_1,
+            "file_name": f"file_name_{source_id_1}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 2 * 1024 * 1024,
         },
@@ -524,18 +528,30 @@ async def test_episodes__progress__filter_by_user__ok(
         **{
             "created_by": other_user.id,
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": source_id_2,
+            "file_name": f"file_name_{source_id_2}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 4 * 1024 * 1024,
         },
     }
-    await db_objects.create(Episode, **podcast_1__episode_data__requested_user)
+    p1_episode__requested_user = await db_objects.create(
+        Episode, **podcast_1__episode_data__requested_user
+    )
     p2_episode__other_user = await db_objects.create(
         Episode, **podcast_2__episode_data__other_user
     )
 
-    with patch("os.path.getsize", return_value=(1024 * 1024)):
-        response = await client.get(urls.progress_api, allow_redirects=False)
+    mocked_redis.get_many.return_value = {
+        p1_episode__requested_user.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 2 * 1024 * 1024,
+        },
+        p2_episode__other_user.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 4 * 1024 * 1024,
+        },
+    }
+    response = await client.get(urls.progress_api, allow_redirects=False)
 
     assert response.status == 200, f"Progress API is not available: {response.text}"
     actual_progress = await response.json()
