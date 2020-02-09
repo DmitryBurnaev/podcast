@@ -14,6 +14,7 @@ from modules.accounts.models import User
 from modules.podcast import tasks
 
 from modules.podcast.models import Podcast, Episode
+from youtube.exceptions import YoutubeExtractInfoError
 from .conftest import generate_video_id, get_user_data, make_cookie
 from .mocks import MockYoutube
 
@@ -87,7 +88,7 @@ async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_yo
 async def test_episodes__create__video_unavailable__fail(
     client, db_objects, podcast, urls, mocked_youtube
 ):
-    mocked_youtube.extract_info.side_effect = pytube_exceptions.VideoUnavailable
+    mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError()
     request_data = {"youtube_link": mocked_youtube.watch_url}
     response = await client.post(
         urls.episodes_list, data=request_data, allow_redirects=False
@@ -218,7 +219,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     urls,
     mocked_youtube: MockYoutube,
 ):
-    mocked_youtube.extract_info.side_effect = pytube_exceptions.VideoUnavailable("Ooops")
+    mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError("Ooops")
 
     podcast_data["publish_id"] = str(time.time())
     another_podcast = await db_objects.create(Podcast, **podcast_data)
@@ -392,17 +393,22 @@ async def test_episodes__create__mobile_redirect__ok(
 
 
 async def test_episodes__progress__several_podcasts__filter_by_status__ok(
-    client, db_objects, podcast, podcast_data, episode_data, urls, mocked_youtube, mocked_redis
+    client, db_objects, podcast, podcast_data, episode_data, urls, mocked_redis
 ):
     podcast_data["publish_id"] = str(time.time())
     podcast_1 = podcast
     podcast_2 = await db_objects.create(Podcast, **podcast_data)
+    src_id_1 = (generate_video_id(),)
+    src_id_2 = (generate_video_id(),)
+    src_id_3 = (generate_video_id(),)
+    src_id_4 = (generate_video_id(),)
 
     podcast_1__episode_data__status_new = {
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_1,
+            "file_name": f"file_name_{src_id_1}",
             "status": Episode.STATUS_NEW,
             "file_size": 1 * 1024 * 1024,
         },
@@ -411,7 +417,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_2,
+            "file_name": f"file_name_{src_id_2}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 2 * 1024 * 1024,
         },
@@ -420,7 +427,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_3,
+            "file_name": f"file_name_{src_id_3}",
             "status": Episode.STATUS_NEW,
             "file_size": 1 * 1024 * 1024,
         },
@@ -429,7 +437,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         **episode_data,
         **{
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": src_id_4,
+            "file_name": f"file_name_{src_id_4}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 4 * 1024 * 1024,
         },
@@ -443,6 +452,7 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         Episode, **podcast_2__episode_data__status_downloading
     )
 
+    mocked_redis.get_many.return_value = {}
     response = await client.get(urls.progress, allow_redirects=False)
     assert response.status == 200, "Progress view is not available"
 
@@ -490,7 +500,7 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 
 
 async def test_episodes__progress__filter_by_user__ok(
-    unauth_client, db_objects, podcast, podcast_data, episode_data, urls, mocked_youtube
+    unauth_client, db_objects, podcast, podcast_data, episode_data, urls, mocked_redis
 ):
     username, password = get_user_data()
     other_user = await db_objects.create(User, username=username, password=password)
@@ -500,12 +510,15 @@ async def test_episodes__progress__filter_by_user__ok(
     podcast_data["created_by"] = other_user.id
     podcast_1 = podcast
     podcast_2 = await db_objects.create(Podcast, **podcast_data)
+    source_id_1 = generate_video_id()
+    source_id_2 = generate_video_id()
 
     podcast_1__episode_data__requested_user = {
         **episode_data,
         **{
             "podcast_id": podcast_1.id,
-            "source_id": generate_video_id(),
+            "source_id": source_id_1,
+            "file_name": f"file_name_{source_id_1}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 2 * 1024 * 1024,
         },
@@ -515,18 +528,30 @@ async def test_episodes__progress__filter_by_user__ok(
         **{
             "created_by": other_user.id,
             "podcast_id": podcast_2.id,
-            "source_id": generate_video_id(),
+            "source_id": source_id_2,
+            "file_name": f"file_name_{source_id_2}",
             "status": Episode.STATUS_DOWNLOADING,
             "file_size": 4 * 1024 * 1024,
         },
     }
-    await db_objects.create(Episode, **podcast_1__episode_data__requested_user)
+    p1_episode__requested_user = await db_objects.create(
+        Episode, **podcast_1__episode_data__requested_user
+    )
     p2_episode__other_user = await db_objects.create(
         Episode, **podcast_2__episode_data__other_user
     )
-    raise AssertionError("getsize does not work here")
-    with patch("os.path.getsize", return_value=(1024 * 1024)):
-        response = await client.get(urls.progress_api, allow_redirects=False)
+
+    mocked_redis.get_many.return_value = {
+        p1_episode__requested_user.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 2 * 1024 * 1024,
+        },
+        p2_episode__other_user.file_name.partition(".")[0]: {
+            "downloaded_bytes": 1024 * 1024,
+            "total_bytes": 4 * 1024 * 1024,
+        },
+    }
+    response = await client.get(urls.progress_api, allow_redirects=False)
 
     assert response.status == 200, f"Progress API is not available: {response.text}"
     actual_progress = await response.json()

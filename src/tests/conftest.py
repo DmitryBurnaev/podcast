@@ -5,7 +5,7 @@ import time
 import uuid
 from collections import namedtuple
 from typing import Tuple
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from hashlib import blake2b
 
 import peewee_async
@@ -16,7 +16,7 @@ from common.models import database
 from common.utils import database_init
 from modules.accounts.models import User
 from modules.podcast.models import Podcast, Episode
-from .mocks import MockYoutube
+from .mocks import MockYoutube, MockRedisClient
 
 
 def get_user_data() -> Tuple[str, str]:
@@ -135,7 +135,9 @@ def episode(db_objects, episode_data):
 @pytest.fixture
 def mocked_youtube() -> MockYoutube:
     mock_youtube = MockYoutube()
-    patcher = patch("modules.youtube.utils.youtube_dl.YoutubeDL.__new__", return_value=mock_youtube)
+    patcher = patch(
+        "modules.youtube.utils.youtube_dl.YoutubeDL.__new__", return_value=mock_youtube
+    )
     patcher.start()
     yield patcher.kwargs["return_value"]
     del mock_youtube
@@ -143,13 +145,11 @@ def mocked_youtube() -> MockYoutube:
 
 
 @pytest.fixture
-def mocked_redis() -> MockYoutube:
-    class MockRedisClient:
-        def __init__(self):
-            self.get_many = Mock(side_effect=ValueError())
-
+def mocked_redis() -> MockRedisClient:
     mock_redis_client = MockRedisClient()
-    patcher = patch("modules.youtube.utils.redis_client", return_value=mock_redis_client)
+    patcher = patch(
+        "modules.youtube.utils.RedisClient.__new__", return_value=mock_redis_client
+    )
     patcher.start()
     yield patcher.kwargs["return_value"]
     del mock_redis_client

@@ -3,7 +3,7 @@ import json
 import os
 import logging
 from functools import partial
-from typing import List, Iterable
+from typing import Iterable
 
 import redis
 
@@ -48,10 +48,7 @@ class RedisClient:
 
         return result
 
-    async def async_get_many(self, keys: List[str], pkey: str) -> dict:
+    async def async_get_many(self, keys: Iterable[str], pkey: str) -> dict:
         loop = asyncio.get_running_loop()
         get_many_handler = partial(self.get_many, keys, pkey=pkey)
         return await loop.run_in_executor(None, get_many_handler)
-
-
-redis_client = RedisClient()

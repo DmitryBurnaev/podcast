@@ -48,16 +48,13 @@ def errors_wrapped(func):
     async def wrapped(self, *args, **kwargs):
         try:
             return await func(self, *args, **kwargs)
-        except Exception as ex:
+        except BaseApplicationError as ex:
             message = getattr(ex, "message", None) or str(ex)
             details = getattr(ex, "details", None)
             if details:
                 message = f"{message}: {details}"
 
-            if isinstance(ex, BaseApplicationError):
-                add_message(self.request, message, kind="error")
-
-            logger.exception(message)
+            add_message(self.request, message, kind="error")
             raise web.HTTPFound(self.request.path)
 
     return wrapped

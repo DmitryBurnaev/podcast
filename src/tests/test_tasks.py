@@ -59,25 +59,6 @@ def test_generate_rss__ok(db_objects, podcast, episode_data):
 
 
 @db_allow_sync
-def test_download_sound__episode_is_downloading__ignore(
-    db_objects, podcast, episode_data, mocked_youtube: MockYoutube
-):
-    new_episode_data = {
-        **episode_data,
-        **{
-            "status": "downloading",
-            "source_id": mocked_youtube.video_id,
-            "watch_url": mocked_youtube.watch_url,
-        },
-    }
-    episode: Episode = Episode.create(**new_episode_data)
-
-    result = download_episode(episode.watch_url, episode.id)
-    assert result == EPISODE_DOWNLOADING_IGNORED
-    assert not mocked_youtube.prefetch.called
-
-
-@db_allow_sync
 def test_download_sound__episode_downloaded__file_correct__ignore_downloading__ok(
     db_objects, podcast, episode_data, mocked_youtube: MockYoutube
 ):
@@ -105,7 +86,7 @@ def test_download_sound__episode_downloaded__file_correct__ignore_downloading__o
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     assert result == EPISODE_DOWNLOADING_IGNORED
-    assert not mocked_youtube.prefetch.called
+    assert not mocked_youtube.download.called
     assert updated_episode.status == "published"
     assert updated_episode.published_at == updated_episode.created_at
 
@@ -113,9 +94,7 @@ def test_download_sound__episode_downloaded__file_correct__ignore_downloading__o
 @db_allow_sync
 @patch("modules.podcast.tasks.podcast_utils.generate_rss")
 @patch("modules.podcast.tasks.youtube_utils.download_audio")
-@patch("modules.podcast.tasks.youtube_utils.ffmpeg_preparation")
 def test_download_sound__episode_new__correct_downloading(
-    ffmpeg_preparation_mock,
     download_audio_mock,
     generate_rss_mock,
     db_objects,
@@ -144,7 +123,6 @@ def test_download_sound__episode_new__correct_downloading(
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url)
-    ffmpeg_preparation_mock.assert_called_with(filename=episode.file_name)
 
     assert result == EPISODE_DOWNLOADING_OK
     assert updated_episode.status == "published"
@@ -154,9 +132,7 @@ def test_download_sound__episode_new__correct_downloading(
 @db_allow_sync
 @patch("modules.podcast.tasks.podcast_utils.generate_rss")
 @patch("modules.podcast.tasks.youtube_utils.download_audio")
-@patch("modules.podcast.tasks.youtube_utils.ffmpeg_preparation")
 def test_download_sound__episode_downloaded__file_incorrect__reload(
-    ffmpeg_preparation_mock,
     download_audio_mock,
     generate_rss_mock,
     db_objects,
@@ -187,7 +163,6 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url)
-    ffmpeg_preparation_mock.assert_called_with(filename=episode.file_name)
 
     assert result == EPISODE_DOWNLOADING_OK
     assert updated_episode.status == "published"
