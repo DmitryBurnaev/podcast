@@ -136,7 +136,6 @@ async def check_state(episodes: Iterable[Episode]) -> list:
     redis_client = RedisClient()
     file_names = {get_redis_key(episode.file_name) for episode in episodes}
     current_states = await redis_client.async_get_many(file_names, pkey="event_key")
-    logger.info(current_states)
     result = []
     for episode in episodes:
         file_name = episode.file_name
