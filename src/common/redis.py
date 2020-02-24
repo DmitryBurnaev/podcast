@@ -3,7 +3,7 @@ import json
 import os
 import logging
 from functools import partial
-from typing import Iterable
+from typing import Iterable, Any, Dict, Union, List
 
 import redis
 
@@ -30,6 +30,9 @@ class RedisClient:
     def set(self, key: str, value, ttl: int = 120):
         self.redis.set(key, json.dumps(value), ttl)
 
+    def get(self, key: str) -> Union[List[Any], Dict[str, Any]]:
+        return json.loads(self.redis.get(key))
+
     def get_many(self, keys: Iterable[str], pkey: str) -> dict:
         """
         Allows to get several values from redis for 1 request
@@ -52,3 +55,7 @@ class RedisClient:
         loop = asyncio.get_running_loop()
         get_many_handler = partial(self.get_many, keys, pkey=pkey)
         return await loop.run_in_executor(None, get_many_handler)
+
+    @staticmethod
+    def get_key_by_filename(filename) -> str:
+        return filename.partition(".")[0]
