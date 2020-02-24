@@ -458,11 +458,11 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 
     mocked_redis.get_many.return_value = {
         p1_episode_downloading.file_name.partition(".")[0]: {
-            "downloaded_bytes": 1024 * 1024,
+            "processed_bytes": 1024 * 1024,
             "total_bytes": 2 * 1024 * 1024,
         },
         p2_episode_downloading.file_name.partition(".")[0]: {
-            "downloaded_bytes": 1024 * 1024,
+            "processed_bytes": 1024 * 1024,
             "total_bytes": 4 * 1024 * 1024,
         },
     }
@@ -543,11 +543,11 @@ async def test_episodes__progress__filter_by_user__ok(
 
     mocked_redis.get_many.return_value = {
         p1_episode__requested_user.file_name.partition(".")[0]: {
-            "downloaded_bytes": 1024 * 1024,
+            "processed_bytes": 1024 * 1024,
             "total_bytes": 2 * 1024 * 1024,
         },
         p2_episode__other_user.file_name.partition(".")[0]: {
-            "downloaded_bytes": 1024 * 1024,
+            "processed_bytes": 1024 * 1024,
             "total_bytes": 4 * 1024 * 1024,
         },
     }

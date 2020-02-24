@@ -1,9 +1,25 @@
 import logging
 import logging.config
+import os
+import uuid
+from functools import partial
+from typing import Optional
 
+import boto3
 from aiohttp import web
 
 import settings
+from common.redis import RedisClient
+
+
+def get_logger(name: str = None):
+    """ Getting configured logger """
+    logging.config.dictConfig(settings.LOGGING)
+    _logger = logging.getLogger(name or "app")
+    return _logger
+
+
+logger = get_logger(__name__)
 
 
 def redirect(
@@ -60,13 +76,6 @@ def is_mobile_app(request):
     return "mobile-app-web-view" in user_agent
 
 
-def get_logger(name: str = None):
-    """ Getting configured logger """
-    logging.config.dictConfig(settings.LOGGING)
-    _logger = logging.getLogger(name or "app")
-    return _logger
-
-
 def database_init(db):
     db.init(
         settings.DATABASE["name"],
@@ -76,3 +85,59 @@ def database_init(db):
         password=settings.DATABASE["password"],
     )
     return db
+
+
+def upload_process_hook(filename: str, chunk: int):
+    """
+    Allows to handle uploading to Yandex.Cloud (S3) and update redis state (for user's progress).
+    It is called by `s3.upload_file` (`common.utils.upload_file`)
+    """
+
+    redis_client = RedisClient()
+    filename = os.path.basename(filename)
+    event_key = redis_client.get_key_by_filename(filename)
+    event_data = redis_client.get(event_key)
+    processed_bytes = event_data.get("processed_bytes", 0) + chunk
+    event_data.update({
+        "status": "uploading_to_cloud",
+        "processed_bytes": processed_bytes
+    })
+    logger.debug("Uploading for %s: %.f %", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100)
+    redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
+
+
+def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
+    """ Allows to upload src_filename to Yandex.Cloud (aka AWS S3) """
+
+    src_filename = os.path.join(settings.RESULT_AUDIO_PATH, filename)
+
+    name, ext = filename.rsplit(".", maxsplit=1)
+    dst_filename = os.path.join(remote_directory, f"{name}_{uuid.uuid4().hex}.{ext}")
+    session = boto3.session.Session(
+        aws_access_key_id=settings.YANDEX_AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.YANDEX_AWS_SECRET_ACCESS_KEY,
+        region_name="ru-central1"
+    )
+    s3 = session.client(service_name='s3', endpoint_url=settings.YANDEX_STORAGE_URL)
+
+    logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
+    try:
+        result_uploading = s3.upload_file(
+            src_filename,
+            settings.YANDEX_BUCKET_NAME,
+            dst_filename,
+            Callback=partial(upload_process_hook, filename),
+            ExtraArgs={'ACL': 'public-read'}
+        )
+    except Exception as error:
+        logger.exception(
+            "Shit! We could not upload file %s to %s. Error: %s",
+            filename, settings.YANDEX_STORAGE_URL, error
+        )
+        return
+
+    result_url = f"{settings.YANDEX_STORAGE_URL}/{dst_filename}"
+    logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
+    logger.debug("Finished uploading for file %s. \n Result url is %s", dst_filename, result_url)
+    logger.debug(result_uploading)
+    return result_url

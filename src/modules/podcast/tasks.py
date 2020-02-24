@@ -1,4 +1,4 @@
-from common.utils import get_logger
+from common.utils import get_logger, upload_file
 from modules.podcast.models import Episode
 from modules.youtube.exceptions import YoutubeException
 from modules.youtube import utils as youtube_utils
@@ -29,17 +29,24 @@ def _update_all_rss(source_id: str):
         podcast_utils.generate_rss(podcast_id)
 
 
+def _update_episode_data(source_id: str, update_data: dict):
+    """ Allows to update data for episodes (filtered by source_id)"""
+
+    logger.info(f"Episodes with source #{source_id}: update_data")
+    Episode.update(**update_data).where(
+        Episode.source_id == source_id, Episode.status != Episode.STATUS_ARCHIVED
+    ).execute()
+
+
 def _update_episode_state(source_id: str, file_size: int):
     """ Allows to mark ALL episodes (exclude archived) with provided source_id as published """
 
     logger.info(f"Episodes with source #{source_id}: updating states")
-    Episode.update(
-        status=Episode.STATUS_PUBLISHED,
-        published_at=Episode.created_at,
-        file_size=file_size,
-    ).where(
-        Episode.source_id == source_id, Episode.status != Episode.STATUS_ARCHIVED
-    ).execute()
+    _update_episode_data(source_id, {
+        "status": Episode.STATUS_PUBLISHED,
+        "published_at": Episode.created_at,
+        "file_size": file_size,
+    })
 
 
 def download_episode(youtube_link: str, episode_id: int):
@@ -86,12 +93,20 @@ def download_episode(youtube_link: str, episode_id: int):
         ).execute()
         return EPISODE_DOWNLOADING_ERROR
 
-    else:
-        file_size = youtube_utils.get_file_size(result_filename)
-        _update_episode_state(episode.source_id, file_size)
-        _update_all_rss(episode.source_id)
-        logger.info("Downloading #%s FINISHED", episode.source_id)
-        return EPISODE_DOWNLOADING_OK
+    # ----- uploading file to cloud -----
+    remote_url = upload_file(result_filename)
+    _update_episode_data(episode.source_id, {"remote_url": remote_url})
+    logger.info(f"=== UPLOAD process for {episode.source_id} was done.")
+    # ------
+
+    # ----- update episodes data -----
+    file_size = youtube_utils.get_file_size(result_filename)
+    _update_episode_state(episode.source_id, file_size)
+    _update_all_rss(episode.source_id)
+    logger.info("=== DOWNLOADING #%s FINISHED", episode.source_id)
+    # ------
+
+    return EPISODE_DOWNLOADING_OK
 
 
 def generate_rss(podcast_id: int):

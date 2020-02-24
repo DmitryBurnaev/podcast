@@ -28,11 +28,7 @@ class YoutubeInfo(NamedTuple):
 
 
 def get_file_name(video_id: str) -> str:
-    return f"{video_id}_sound.mp3"
-
-
-def get_redis_key(file_name: str) -> str:
-    return file_name.partition(".")[0]
+    return f"{video_id}.mp3"
 
 
 def get_file_size(file_name):
@@ -55,36 +51,36 @@ def get_video_id(youtube_link: str) -> Optional[str]:
 
 def download_process_hook(event: dict):
     """
-    Allows to handle proccess of downloading and performing episode's file.
+    Allows to handle processes of downloading and performing episode's file.
     It is called by `youtube_dl.YoutubeDL`
     """
     redis_client = RedisClient()
-    file_name = os.path.basename(event["filename"])
-    event_key = get_redis_key(file_name)
+    filename = os.path.basename(event["filename"])
+    event_key = redis_client.get_key_by_filename(filename)
     total_bytes = event.get("total_bytes") or event.get("total_bytes_estimate", 0)
     event_data = {
         "event_key": event_key,
         "status": event["status"],
-        "downloaded_bytes": event.get("downloaded_bytes", total_bytes),
+        "processed_bytes": event.get("processed_bytes", total_bytes),
         "total_bytes": total_bytes,
     }
     redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
 
 
-def download_audio(youtube_link: str) -> Optional[str]:
+def download_audio(youtube_link: str) -> str:
     """ Download youtube video and perform to audio (.mp3) file
 
     :param youtube_link: URL to youtube video which are needed to download
     :return result file name
     """
 
-    logger.info(f"Started downloading for {youtube_link}")
+    logger.info(f"=== STARTED downloading for {youtube_link}")
     video_id = get_video_id(youtube_link)
-    file_name = get_file_name(video_id)
+    filename = get_file_name(video_id)
     params = {
         "format": "bestaudio/best",
         "outtmpl": os.path.join(
-            settings.RESULT_AUDIO_PATH, file_name.replace("mp3", "%(ext)s")
+            settings.RESULT_AUDIO_PATH, filename.replace("mp3", "%(ext)s")
         ),
         "postprocessors": [
             {
@@ -99,8 +95,8 @@ def download_audio(youtube_link: str) -> Optional[str]:
     with youtube_dl.YoutubeDL(params) as ydl:
         ydl.download([youtube_link])
 
-    logger.info(f"Download process for {video_id} was done.")
-    return file_name
+    logger.info(f"=== DOWNLOAD process for {video_id} was done. Start uploading to the cloud")
+    return filename
 
 
 async def get_youtube_info(youtube_link: str) -> YoutubeInfo:
@@ -134,7 +130,7 @@ async def check_state(episodes: Iterable[Episode]) -> list:
     """ Allows to get info about download progress for requested episodes """
 
     redis_client = RedisClient()
-    file_names = {get_redis_key(episode.file_name) for episode in episodes}
+    file_names = {redis_client.get_key_by_filename(episode.file_name) for episode in episodes}
     current_states = await redis_client.async_get_many(file_names, pkey="event_key")
     result = []
     for episode in episodes:
@@ -143,10 +139,10 @@ async def check_state(episodes: Iterable[Episode]) -> list:
             logger.warning(f"Episode {episode} does not contain filename")
             continue
 
-        event_key = get_redis_key(file_name)
+        event_key = redis_client.get_key_by_filename(file_name)
         current_state = current_states.get(event_key)
         if current_state:
-            current_file_size = current_state["downloaded_bytes"]
+            current_file_size = current_state["processed_bytes"]
             current_file_size_mb = round(current_file_size / 1024 / 1024, 2)
             total_file_size = current_state["total_bytes"]
             total_file_size_mb = round(total_file_size / 1024 / 1024, 2)
