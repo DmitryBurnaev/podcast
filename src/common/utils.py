@@ -102,7 +102,9 @@ def upload_process_hook(filename: str, chunk: int):
         "status": "uploading_to_cloud",
         "processed_bytes": processed_bytes
     })
-    logger.debug("Uploading for %s: %.f %", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100)
+    logger.debug(
+        "Uploading for %s: %.f %", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100
+    )
     redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
 
 
@@ -114,17 +116,17 @@ def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
     name, ext = filename.rsplit(".", maxsplit=1)
     dst_filename = os.path.join(remote_directory, f"{name}_{uuid.uuid4().hex}.{ext}")
     session = boto3.session.Session(
-        aws_access_key_id=settings.YANDEX_AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.YANDEX_AWS_SECRET_ACCESS_KEY,
+        aws_access_key_id=settings.S3_AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.S3_AWS_SECRET_ACCESS_KEY,
         region_name="ru-central1"
     )
-    s3 = session.client(service_name='s3', endpoint_url=settings.YANDEX_STORAGE_URL)
+    s3 = session.client(service_name='s3', endpoint_url=settings.S3_STORAGE_URL)
 
     logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
     try:
         result_uploading = s3.upload_file(
             src_filename,
-            settings.YANDEX_BUCKET_NAME,
+            settings.S3_BUCKET_NAME,
             dst_filename,
             Callback=partial(upload_process_hook, filename),
             ExtraArgs={'ACL': 'public-read'}
@@ -132,11 +134,11 @@ def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
     except Exception as error:
         logger.exception(
             "Shit! We could not upload file %s to %s. Error: %s",
-            filename, settings.YANDEX_STORAGE_URL, error
+            filename, settings.S3_STORAGE_URL, error
         )
         return
 
-    result_url = f"{settings.YANDEX_STORAGE_URL}/{dst_filename}"
+    result_url = f"{settings.S3_STORAGE_URL}/{dst_filename}"
     logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
     logger.debug("Finished uploading for file %s. \n Result url is %s", dst_filename, result_url)
     logger.debug(result_uploading)
