@@ -1,3 +1,4 @@
+import settings
 from common.utils import get_logger, upload_file
 from modules.podcast.models import Episode
 from modules.youtube.exceptions import YoutubeException
@@ -50,12 +51,12 @@ def _update_episode_state(source_id: str, file_size: int):
 
 
 def download_episode(youtube_link: str, episode_id: int):
-    """ Allows to download and recreate specific rss (by requested episode_id) """
+    """ Allows to download youtube video and recreate specific rss (by requested episode_id) """
 
     logger.info(f"START downloading for {youtube_link}")
     episode = Episode.get_by_id(episode_id)
 
-    stored_file_size = youtube_utils.get_file_size(episode.file_name)
+    stored_file_size = youtube_utils.get_remote_file_size(episode.file_name)
     if stored_file_size and stored_file_size == episode.file_size:
         logger.info(
             f"Episode {episode} already downloaded and file correct. "
@@ -94,7 +95,7 @@ def download_episode(youtube_link: str, episode_id: int):
         return EPISODE_DOWNLOADING_ERROR
 
     # ----- uploading file to cloud -----
-    remote_url = upload_file(result_filename)
+    remote_url = upload_file(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
     _update_episode_data(episode.source_id, {"remote_url": remote_url})
     logger.info(f"=== UPLOAD process for {episode.source_id} was done.")
     # ------

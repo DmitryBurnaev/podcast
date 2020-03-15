@@ -298,7 +298,7 @@ async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls
         response = await client.get(url, allow_redirects=False)
         mocked_os_remove.assert_called()
         mocked_os_remove.assert_called_with(
-            os.path.join(settings.RESULT_AUDIO_PATH, episode.file_name)
+            os.path.join(settings.TMP_AUDIO_PATH, episode.file_name)
         )
 
     assert response.status == 302

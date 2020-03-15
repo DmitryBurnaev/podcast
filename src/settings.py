@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -30,7 +31,8 @@ REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 REDIS_CON = REDIS_HOST, REDIS_PORT
 
 DEBUG = os.getenv("APP_DEBUG", "") in ("1", "True")
-RESULT_AUDIO_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "audio")
+TMP_AUDIO_PATH = tempfile.mkdtemp(suffix="podcast_audio_")
+TMP_IMAGE_PATH = tempfile.mkdtemp(suffix="podcast_images_")
 RESULT_RSS_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "rss")
 TEMPLATE_PATH = os.path.join(BASE_DIR, "templates")
 STATIC_PATH = os.path.join(PROJECT_ROOT_DIR, "static")
@@ -42,11 +44,13 @@ S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "podcast")
 S3_BUCKET_AUDIO_PATH = os.getenv("S3_BUCKET_AUDIO_PATH", "/audio/")
 S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "/images/")
 
+RESULT_FILE_EXT = "mp3"
+
 LOCALES_PATH = os.path.join(BASE_DIR, "i18n")
 LOCALES_BY_DEFAULT = "en"
 LOCALES = ["en", "ru"]
 
-os.makedirs(RESULT_AUDIO_PATH, exist_ok=True)
+os.makedirs(TMP_AUDIO_PATH, exist_ok=True)
 os.makedirs(RESULT_RSS_PATH, exist_ok=True)
 os.makedirs(STATIC_PATH, exist_ok=True)
 

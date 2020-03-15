@@ -7,8 +7,8 @@ from youtube.utils import get_file_size
 import boto3
 session = boto3.session.Session(
     region_name="ru-central1",
-    aws_access_key_id=os.getenv("YANDEX_AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("YANDEX_AWS_SECRET_ACCESS_KEY")
+    aws_access_key_id=os.getenv("S3_AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("S3_AWS_SECRET_ACCESS_KEY")
 )
 s3 = session.client(
     service_name='s3',
