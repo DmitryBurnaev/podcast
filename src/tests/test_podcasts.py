@@ -101,7 +101,7 @@ async def test_podcasts__delete__ok(
         response = await client.get(url, allow_redirects=False)
         mocked_os_remove.assert_called()
         expected_remove_files = [
-            os.path.join(settings.RESULT_AUDIO_PATH, episode.file_name),
+            os.path.join(settings.TMP_AUDIO_PATH, episode.file_name),
             os.path.join(settings.RESULT_RSS_PATH, f"{another_podcast.publish_id}.xml"),
         ]
         actual_remove_files = [

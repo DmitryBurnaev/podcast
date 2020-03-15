@@ -439,9 +439,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
         res = self.http_link_regex.sub("[LINK]", value)
         return self.symbols_regex.sub("", res)
 
-    async def _get_episode_data(
-        self, same_episode: Episode, podcast_id: int, video_id: str, youtube_link: str
-    ) -> dict:
+    async def _get_episode_data(self, same_episode: Episode, podcast_id: int, video_id: str, youtube_link: str) -> dict:
         """
         Allows to get information for new episode.
         This info can be given from same episode (episode which has same source_id)
@@ -490,8 +488,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
                 "author": youtube_info.author,
                 "length": youtube_info.length,
                 "file_size": same_episode_data.get("file_size"),
-                "file_name": same_episode_data.get("file_name")
-                or get_file_name(youtube_info.video_id),
+                "file_name": same_episode_data.get("file_name") or get_file_name(youtube_info.video_id),
             }
             message = "Episode was successfully created from the YouTube video."
             self.logger.info(message)

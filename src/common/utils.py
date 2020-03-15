@@ -1,9 +1,9 @@
 import logging
 import logging.config
 import os
-import uuid
 from functools import partial
 from typing import Optional
+from urllib.parse import urljoin
 
 import boto3
 from aiohttp import web
@@ -103,24 +103,31 @@ def upload_process_hook(filename: str, chunk: int):
         "processed_bytes": processed_bytes
     })
     logger.debug(
-        "Uploading for %s: %.f %", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100
+        "Uploading for %s: %.f", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100
     )
     redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
 
 
-def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
-    """ Allows to upload src_filename to Yandex.Cloud (aka AWS S3) """
-
-    src_filename = os.path.join(settings.RESULT_AUDIO_PATH, filename)
-
-    name, ext = filename.rsplit(".", maxsplit=1)
-    dst_filename = os.path.join(remote_directory, f"{name}_{uuid.uuid4().hex}.{ext}")
+def get_s3_client():
+    """ Allows to perform s3 storage client (aka amazon s3 client) """
+    logger.debug("Creating s3 client's session (boto3)...")
     session = boto3.session.Session(
         aws_access_key_id=settings.S3_AWS_ACCESS_KEY_ID,
         aws_secret_access_key=settings.S3_AWS_SECRET_ACCESS_KEY,
         region_name="ru-central1"
     )
+    logger.debug("Boto3 (s3) Session <%s> created", session)
     s3 = session.client(service_name='s3', endpoint_url=settings.S3_STORAGE_URL)
+    logger.debug("S3 client <%s> created", s3)
+    return s3
+
+
+def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
+    """ Allows to upload src_filename to Yandex.Cloud (aka AWS S3) """
+
+    src_filename = os.path.join(settings.TMP_AUDIO_PATH, filename)
+    dst_filename = os.path.join(remote_directory, filename)
+    s3 = get_s3_client()
 
     logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
     try:
@@ -138,7 +145,7 @@ def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
         )
         return
 
-    result_url = f"{settings.S3_STORAGE_URL}/{dst_filename}"
+    result_url = urljoin(settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_filename))
     logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
     logger.debug("Finished uploading for file %s. \n Result url is %s", dst_filename, result_url)
     logger.debug(result_uploading)

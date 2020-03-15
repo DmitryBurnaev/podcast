@@ -46,7 +46,7 @@ def delete_file(filename: Union[str, Path], log: Logger):
         log.error(f"Episode contains 'None' file. SKIP")
         return
 
-    full_path = os.path.join(settings.RESULT_AUDIO_PATH, filename)
+    full_path = os.path.join(settings.TMP_AUDIO_PATH, filename)
     try:
         os.remove(full_path)
     except IOError as error:

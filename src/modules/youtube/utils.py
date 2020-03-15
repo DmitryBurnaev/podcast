@@ -1,15 +1,18 @@
 import asyncio
 import os
 import re
+import uuid
 from functools import partial
 from typing import Optional, Iterable, NamedTuple
 
+import botocore
+import botocore.exceptions
 import youtube_dl
 
 import settings
 from modules.youtube.exceptions import YoutubeExtractInfoError
 from modules.podcast.models import Episode
-from common.utils import get_logger
+from common.utils import get_logger, get_s3_client
 from common.redis import RedisClient
 
 logger = get_logger(__name__)
@@ -28,16 +31,37 @@ class YoutubeInfo(NamedTuple):
 
 
 def get_file_name(video_id: str) -> str:
-    return f"{video_id}.mp3"
+    return f"{video_id}_{uuid.uuid4().hex}.{settings.RESULT_FILE_EXT}"
 
 
 def get_file_size(file_name):
     try:
-        full_path = os.path.join(settings.RESULT_AUDIO_PATH, file_name)
+        full_path = os.path.join(settings.TMP_AUDIO_PATH, file_name)
         return os.path.getsize(full_path)
     except FileNotFoundError:
         logger.info("File %s not found. Return size 0", file_name)
         return 0
+
+
+def get_remote_file_size(filename: str) -> int:
+    """
+    Allows to find file on remote storage (S3)
+    Headers content info about downloaded file (there is a content-length / file size)
+    """
+    s3 = get_s3_client()
+
+    try:
+        remote_path = os.path.join(settings.S3_BUCKET_AUDIO_PATH, filename)
+        file_head = s3.head_object(Key=remote_path, Bucket=settings.S3_BUCKET_NAME)
+    except botocore.exceptions.ClientError:
+        logger.info("File %s was not found on s3 storage", filename)
+    except Exception as error:
+        logger.exception("Couldn't fetch file on s3 storage. Error: %s", error)
+    else:
+        logger.info("File %s found with headers: %s", filename, file_head)
+        return file_head['ResponseMetadata']['HTTPHeaders']['content-length']
+
+    return 0
 
 
 def get_video_id(youtube_link: str) -> Optional[str]:
@@ -80,7 +104,7 @@ def download_audio(youtube_link: str) -> str:
     params = {
         "format": "bestaudio/best",
         "outtmpl": os.path.join(
-            settings.RESULT_AUDIO_PATH, filename.replace("mp3", "%(ext)s")
+            settings.TMP_AUDIO_PATH, filename.replace("mp3", "%(ext)s")
         ),
         "postprocessors": [
             {
