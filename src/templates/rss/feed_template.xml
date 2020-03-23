@@ -33,9 +33,9 @@
             <itunes:author>{{ episode.author }}</itunes:author>
             <itunes:summary>{{ episode.description }}</itunes:summary>
             <itunes:image href="{{ episode.safe_image_url }}"/>
-            <enclosure url="{{ episode.content_url }}" type="{{ episode.content_type }}" length="{{ episode.file_size }}"/>
+            <enclosure url="{{ episode.remote_url }}" type="{{ episode.content_type }}" length="{{ episode.file_size }}"/>
             <author>{{ episode.author }}</author>
-            <media:content url="{{ episode.content_url }}" fileSize="{{ episode.file_size }}" type="{{ episode.content_type }}"/>
+            <media:content url="{{ episode.remote_url }}" fileSize="{{ episode.file_size }}" type="{{ episode.content_type }}"/>
             <itunes:explicit>no</itunes:explicit>
         </item>
         {% endfor %}
