@@ -1,18 +1,18 @@
 import uuid
 from _md5 import md5
-from urllib.parse import urljoin
 from xml.sax.saxutils import escape
 
 import peewee
 from datetime import datetime
 import peewee_async
 
-import settings
 from app_i18n import aiohttp_translations
 from modules.accounts.models import User
 from common.models import BaseModel
+from common.utils import get_logger
 
 _ = aiohttp_translations.gettext
+logger = get_logger(__name__)
 
 
 class Podcast(BaseModel):
@@ -126,11 +126,6 @@ class Episode(BaseModel):
             .where(cls.status == cls.STATUS_DOWNLOADING, cls.created_by_id == user_id)
             .order_by(Episode.created_at.desc())
         )
-
-    @property
-    def content_url(self):
-        file_name = self.file_name or "unknown"
-        return urljoin(urljoin(settings.SITE_URL, settings.MEDIA_URL), file_name)
 
     @property
     def safe_image_url(self):

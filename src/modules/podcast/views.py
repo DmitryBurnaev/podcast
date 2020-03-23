@@ -20,13 +20,12 @@ from common.utils import redirect, add_message, is_mobile_app
 from common.views import BaseApiView
 from modules.podcast import tasks
 from modules.podcast.models import Podcast, Episode
-from modules.podcast.utils import delete_file
+from modules.podcast.utils import delete_file, delete_remote_file
 from modules.youtube.utils import (
-    get_file_name,
     get_youtube_info,
     get_video_id,
-    check_state,
 )
+from podcast.utils import check_state
 
 
 class BasePodcastApiView(BaseApiView, ABC):
@@ -143,16 +142,15 @@ class PodcastDeleteApiView(BasePodcastApiView):
     model_class = Podcast
     kwarg_pk = "podcast_id"
 
-    async def _delete_files(self, podcast: Podcast, episodes: List[Episode]):
+    @staticmethod
+    async def _delete_files(podcast: Podcast, episodes: List[Episode]):
         loop = asyncio.get_running_loop()
         for episode in episodes:
             await loop.run_in_executor(
-                None, partial(delete_file, episode.file_name, self.logger)
+                None, partial(delete_remote_file, episode.file_name)
             )
         rss_file_path = Path(settings.RESULT_RSS_PATH) / f"{podcast.publish_id}.xml"
-        await loop.run_in_executor(
-            None, partial(delete_file, rss_file_path, self.logger)
-        )
+        await loop.run_in_executor(None, partial(delete_file, rss_file_path))
 
     @login_required
     async def get(self):
@@ -283,6 +281,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
             Episode.select().where(
                 Episode.source_id == episode.source_id,
                 Episode.status != Episode.STATUS_NEW,
+                Episode.id != episode.id,
             )
         )
         if same_file_episodes:
@@ -294,9 +293,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
             return
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, partial(delete_file, episode.file_name, self.logger)
-        )
+        await loop.run_in_executor(None, partial(delete_remote_file, episode.file_name))
 
     @login_required
     async def get(self):
@@ -464,6 +461,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
                     "length",
                     "file_size",
                     "file_name",
+                    "remote_url",
                 ]
             )
         else:
@@ -488,10 +486,12 @@ class EpisodeCreateApiView(BasePodcastApiView):
                 "author": youtube_info.author,
                 "length": youtube_info.length,
                 "file_size": same_episode_data.get("file_size"),
-                "file_name": same_episode_data.get("file_name") or get_file_name(youtube_info.video_id),
+                "file_name": same_episode_data.get("file_name"),
+                "remote_url": same_episode_data.get("remote_url"),
             }
             message = "Episode was successfully created from the YouTube video."
             self.logger.info(message)
+            self.logger.debug("New episode data = %s", new_episode_data)
             add_message(self.request, message)
         elif same_episode:
             message = "Episode will be copied from other episode with same video."

@@ -56,7 +56,7 @@ def download_episode(youtube_link: str, episode_id: int):
     logger.info(f"START downloading for {youtube_link}")
     episode = Episode.get_by_id(episode_id)
 
-    stored_file_size = youtube_utils.get_remote_file_size(episode.file_name)
+    stored_file_size = podcast_utils.get_remote_file_size(episode.file_name)
     if stored_file_size and stored_file_size == episode.file_size:
         logger.info(
             f"Episode {episode} already downloaded and file correct. "
@@ -71,7 +71,7 @@ def download_episode(youtube_link: str, episode_id: int):
             f"Episode {episode} is {episode.status} but file-size seems not correct. "
             f"Removing not-correct file and reloading it from youtube."
         )
-        podcast_utils.delete_file(episode.file_name, logger)
+        podcast_utils.delete_remote_file(episode.file_name)
 
     logger.info(
         f"Mark all episodes with source_id [{episode.source_id}] as downloading."
@@ -96,17 +96,18 @@ def download_episode(youtube_link: str, episode_id: int):
 
     # ----- uploading file to cloud -----
     remote_url = upload_file(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
-    _update_episode_data(episode.source_id, {"remote_url": remote_url})
+    _update_episode_data(episode.source_id, {"file_name": result_filename, "remote_url": remote_url})
     logger.info(f"=== UPLOAD process for {episode.source_id} was done.")
-    # ------
+    # -----------------------------------
 
-    # ----- update episodes data -----
-    file_size = youtube_utils.get_file_size(result_filename)
+    # ----- update episodes data -------
+    file_size = podcast_utils.get_remote_file_size(result_filename)
     _update_episode_state(episode.source_id, file_size)
     _update_all_rss(episode.source_id)
     logger.info("=== DOWNLOADING #%s FINISHED", episode.source_id)
-    # ------
+    # -----------------------------------
 
+    podcast_utils.delete_file(result_filename)  # remove tmp file
     return EPISODE_DOWNLOADING_OK
 
 

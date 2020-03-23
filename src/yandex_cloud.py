@@ -1,8 +1,7 @@
 import os
 import uuid
 
-from youtube.utils import get_file_size
-
+from podcast.utils import get_file_size
 
 import boto3
 session = boto3.session.Session(
