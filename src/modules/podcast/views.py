@@ -10,22 +10,26 @@ import peewee
 from aiohttp import web
 from cerberus import Validator
 
+from app_i18n import aiohttp_translations
 from modules.youtube.exceptions import YoutubeExtractInfoError
 
 import settings
 from common.decorators import login_required, errors_wrapped, json_response
 from common.excpetions import YoutubeFetchError
 from common.models import BaseModel
-from common.utils import redirect, add_message, is_mobile_app
+from common.utils import redirect, add_message, is_mobile_app, EpisodeStatuses
 from common.views import BaseApiView
 from modules.podcast import tasks
 from modules.podcast.models import Podcast, Episode
-from modules.podcast.utils import delete_file, delete_remote_file
+from modules.podcast.utils import delete_file, delete_remote_file, get_file_name
 from modules.youtube.utils import (
     get_youtube_info,
     get_video_id,
 )
-from podcast.utils import check_state
+from modules.podcast.utils import check_state
+
+
+_ = aiohttp_translations.gettext
 
 
 class BasePodcastApiView(BaseApiView, ABC):
@@ -486,7 +490,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
                 "author": youtube_info.author,
                 "length": youtube_info.length,
                 "file_size": same_episode_data.get("file_size"),
-                "file_name": same_episode_data.get("file_name"),
+                "file_name": same_episode_data.get("file_name") or get_file_name(video_id),
                 "remote_url": same_episode_data.get("remote_url"),
             }
             message = "Episode was successfully created from the YouTube video."
@@ -520,22 +524,28 @@ class ProgressApiView(web.View):
     @login_required
     @errors_wrapped
     async def get(self):
+        status_choices = {
+            EpisodeStatuses.pending: _("Pending"),
+            EpisodeStatuses.error: _("Error"),
+            EpisodeStatuses.finished: _("Finished"),
+            EpisodeStatuses.episode_downloading: _("Downloading"),
+            EpisodeStatuses.episode_postprocessing: _("Post processing"),
+            EpisodeStatuses.episode_uploading: _("Uploading to the cloud"),
+            EpisodeStatuses.cover_downloading: _("Cover is downloading"),
+            EpisodeStatuses.cover_uploading: _("Cover is uploading"),
+        }
+
         podcast_items = {
             podcast.id: podcast
-            for podcast in await Podcast.get_all(
-                self.request.app.objects, self.request.user.id
-            )
+            for podcast in await Podcast.get_all(self.request.app.objects, self.request.user.id)
         }
-        episodes = await Episode.get_in_progress(
-            self.request.app.objects, self.request.user.id
-        )
+        episodes = await Episode.get_in_progress(self.request.app.objects, self.request.user.id)
         progress = await check_state(episodes)
         if progress:
             for progress_item in progress:
                 podcast = podcast_items.get(progress_item["podcast_id"])
-                progress_item["podcast_publish_id"] = getattr(
-                    podcast, "publish_id", None
-                )
+                progress_item["podcast_publish_id"] = getattr(podcast, "publish_id", None)
+                progress_item["status_display"] = status_choices.get(progress_item["status"])
         else:
             progress = []
 

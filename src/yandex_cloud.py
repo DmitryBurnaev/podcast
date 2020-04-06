@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from podcast.utils import get_file_size
+from modules.podcast.utils import get_file_size
 
 import boto3
 session = boto3.session.Session(

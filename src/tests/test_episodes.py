@@ -14,7 +14,7 @@ from modules.accounts.models import User
 from modules.podcast import tasks
 
 from modules.podcast.models import Podcast, Episode
-from youtube.exceptions import YoutubeExtractInfoError
+from modules.youtube.exceptions import YoutubeExtractInfoError
 from .conftest import generate_video_id, get_user_data, make_cookie
 from .mocks import MockYoutube
 

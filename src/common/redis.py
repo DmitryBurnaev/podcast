@@ -31,7 +31,7 @@ class RedisClient:
         self.redis.set(key, json.dumps(value), ttl)
 
     def get(self, key: str) -> Union[List[Any], Dict[str, Any]]:
-        return json.loads(self.redis.get(key))
+        return json.loads(self.redis.get(key) or "null")
 
     def get_many(self, keys: Iterable[str], pkey: str) -> dict:
         """

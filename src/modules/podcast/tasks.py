@@ -33,7 +33,7 @@ def _update_all_rss(source_id: str):
 def _update_episode_data(source_id: str, update_data: dict):
     """ Allows to update data for episodes (filtered by source_id)"""
 
-    logger.info(f"Episodes with source #{source_id}: update_data")
+    logger.info("[%s] Episodes update data: %s", source_id, update_data)
     Episode.update(**update_data).where(
         Episode.source_id == source_id, Episode.status != Episode.STATUS_ARCHIVED
     ).execute()
@@ -53,29 +53,28 @@ def _update_episode_state(source_id: str, file_size: int):
 def download_episode(youtube_link: str, episode_id: int):
     """ Allows to download youtube video and recreate specific rss (by requested episode_id) """
 
-    logger.info(f"START downloading for {youtube_link}")
     episode = Episode.get_by_id(episode_id)
+    logger.info(
+        "=== [%s] START downloading process URL: %s FILENAME: %s ===",
+        episode.source_id, youtube_link, episode.file_name
+    )
 
     stored_file_size = podcast_utils.get_remote_file_size(episode.file_name)
     if stored_file_size and stored_file_size == episode.file_size:
-        logger.info(
-            f"Episode {episode} already downloaded and file correct. "
-            f"Downloading will be ignored."
-        )
+        logger.info("[%s] Episode already downloaded and file correct. Downloading will be ignored.", episode.source_id)
         _update_episode_state(episode.source_id, stored_file_size)
         _update_all_rss(episode.source_id)
         return EPISODE_DOWNLOADING_IGNORED
 
     elif episode.status not in (Episode.STATUS_NEW, Episode.STATUS_DOWNLOADING):
         logger.error(
-            f"Episode {episode} is {episode.status} but file-size seems not correct. "
-            f"Removing not-correct file and reloading it from youtube."
+            "[%s] Episode is %s but file-size seems not correct. "
+            "Removing not-correct file %s and reloading it from youtube.",
+            episode.source_id, episode.status, episode.file_name
         )
         podcast_utils.delete_remote_file(episode.file_name)
 
-    logger.info(
-        f"Mark all episodes with source_id [{episode.source_id}] as downloading."
-    )
+    logger.info(f"[%s] Mark all episodes with source_id [%s] as downloading.", episode.source_id, episode.source_id)
     query = Episode.update(status=Episode.STATUS_DOWNLOADING).where(
         Episode.source_id == episode.source_id,
         Episode.status != Episode.STATUS_ARCHIVED,
@@ -83,31 +82,34 @@ def download_episode(youtube_link: str, episode_id: int):
     query.execute()
 
     try:
-        result_filename = youtube_utils.download_audio(youtube_link)
+        result_filename = youtube_utils.download_audio(youtube_link, episode.file_name)
     except YoutubeException as error:
         logger.exception(
-            f"Downloading #{episode.source_id} FAILED: Could not download track: {error}. "
-            f"All episodes will be rolled back to NEW state"
+            "=== [%s] Downloading FAILED: Could not download track: %s. "
+            "All episodes will be rolled back to NEW state", episode.source_id, error
         )
-        Episode.update(status=Episode.STATUS_NEW).where(
-            Episode.source_id == episode.source_id
-        ).execute()
+        Episode.update(status=Episode.STATUS_NEW).where(Episode.source_id == episode.source_id).execute()
         return EPISODE_DOWNLOADING_ERROR
+
+    logger.info("=== [%s] DOWNLOADING was done ===", episode.source_id)
+
+    youtube_utils.ffmpeg_preparation(result_filename)
+    logger.info("=== [%s] POST PROCESSING was done === ", episode.source_id)
 
     # ----- uploading file to cloud -----
     remote_url = upload_file(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
     _update_episode_data(episode.source_id, {"file_name": result_filename, "remote_url": remote_url})
-    logger.info(f"=== UPLOAD process for {episode.source_id} was done.")
+    logger.info("=== [%s] UPLOADING was done === ", episode.source_id)
     # -----------------------------------
 
     # ----- update episodes data -------
     file_size = podcast_utils.get_remote_file_size(result_filename)
     _update_episode_state(episode.source_id, file_size)
     _update_all_rss(episode.source_id)
-    logger.info("=== DOWNLOADING #%s FINISHED", episode.source_id)
+    podcast_utils.delete_file(result_filename)  # remove tmp file
     # -----------------------------------
 
-    podcast_utils.delete_file(result_filename)  # remove tmp file
+    logger.info("=== [%s] DOWNLOADING total finished ===", episode.source_id)
     return EPISODE_DOWNLOADING_OK
 
 
