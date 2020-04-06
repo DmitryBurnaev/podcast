@@ -1,3 +1,4 @@
+import enum
 import logging
 import logging.config
 import os
@@ -22,15 +23,40 @@ def get_logger(name: str = None):
 logger = get_logger(__name__)
 
 
-def redirect(
-    request,
-    router_name: str,
-    *,
-    permanent=False,
-    url: str = None,
-    reason="HttpFound",
-    **kwargs,
-):
+class EpisodeStatuses(str, enum.Enum):
+    pending = "pending"
+    episode_downloading = "episode_downloading"
+    episode_postprocessing = "episode_postprocessing"
+    episode_uploading = "episode_uploading"
+    cover_downloading = "cover_downloading"
+    cover_uploading = "cover_uploading"
+    error = "error"
+    finished = "finished"
+
+
+def episode_process_hook(status: str, filename: str, total_bytes: int = 0, processed_bytes: int = None, chunk: int = 0):
+    """ Allows to handle processes of performing episode's file.
+    """
+    redis_client = RedisClient()
+    filename = os.path.basename(filename)
+    event_key = redis_client.get_key_by_filename(filename)
+    current_event_data = redis_client.get(event_key)
+    total_bytes = total_bytes or current_event_data.get("total_bytes")
+    if processed_bytes is None:
+        processed_bytes = current_event_data.get("processed_bytes") + chunk
+
+    event_data = {
+        "event_key": event_key,
+        "status": status,
+        "processed_bytes": processed_bytes,
+        "total_bytes": total_bytes,
+    }
+    redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
+    progress = "{0:.2%}".format(processed_bytes / event_data.get("total_bytes", 0))
+    logger.debug("[%s] for %s: %s", status, filename, progress)
+
+
+def redirect(request, router_name: str, *, permanent=False, url: str = None, reason="HttpFound", **kwargs):
     """ Redirect to given URL name
 
     :param request: current request for web app
@@ -92,24 +118,16 @@ def upload_process_hook(filename: str, chunk: int):
     Allows to handle uploading to Yandex.Cloud (S3) and update redis state (for user's progress).
     It is called by `s3.upload_file` (`common.utils.upload_file`)
     """
-
-    redis_client = RedisClient()
-    filename = os.path.basename(filename)
-    event_key = redis_client.get_key_by_filename(filename)
-    event_data = redis_client.get(event_key)
-    processed_bytes = event_data.get("processed_bytes", 0) + chunk
-    event_data.update({
-        "status": "uploading_to_cloud",
-        "processed_bytes": processed_bytes
-    })
-    logger.debug(
-        "Uploading for %s: %.f", filename, (event_data.get("total_bytes", 0) / processed_bytes) * 100
+    episode_process_hook(
+        filename=filename,
+        status=EpisodeStatuses.episode_uploading,
+        chunk=chunk
     )
-    redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
 
 
 def get_s3_client():
     """ Allows to perform s3 storage client (aka amazon s3 client) """
+
     logger.debug("Creating s3 client's session (boto3)...")
     session = boto3.session.Session(
         aws_access_key_id=settings.S3_AWS_ACCESS_KEY_ID,
@@ -128,6 +146,11 @@ def upload_file(filename: str, remote_directory: str = None) -> Optional[str]:
     src_filename = os.path.join(settings.TMP_AUDIO_PATH, filename)
     dst_filename = os.path.join(remote_directory, filename)
     s3 = get_s3_client()
+    episode_process_hook(
+        filename=filename,
+        status=EpisodeStatuses.episode_uploading,
+        processed_bytes=0
+    )
 
     logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
     try:

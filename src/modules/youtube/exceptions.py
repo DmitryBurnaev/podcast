@@ -4,3 +4,7 @@ class YoutubeException(Exception):
 
 class YoutubeExtractInfoError(YoutubeException):
     pass
+
+
+class FFMPegPreparationError(YoutubeException):
+    pass

@@ -9,7 +9,7 @@ from jinja2 import Template
 
 import settings
 from common.redis import RedisClient
-from common.utils import get_logger, get_s3_client
+from common.utils import get_logger, get_s3_client, EpisodeStatuses
 from modules.podcast.models import Podcast, Episode
 
 logger = get_logger(__name__)
@@ -75,8 +75,8 @@ def delete_remote_file(filename: Union[str, Path]):
         logger.info("File %s found and deleted: %s", filename, file_deleted)
 
 
-def get_file_name(video_id: str) -> str:
-    return f"{video_id}_{uuid.uuid4().hex}.{settings.RESULT_FILE_EXT}"
+def get_file_name(video_id: str, file_ext: str = settings.RESULT_FILE_EXT) -> str:
+    return f"{video_id}_{uuid.uuid4().hex}.{file_ext}"
 
 
 def get_file_size(file_name):
@@ -109,24 +109,6 @@ def get_remote_file_size(filename: Optional[str]) -> int:
     return 0
 
 
-def download_process_hook(event: dict):
-    """
-    Allows to handle processes of downloading and performing episode's file.
-    It is called by `youtube_dl.YoutubeDL`
-    """
-    redis_client = RedisClient()
-    filename = os.path.basename(event["filename"])
-    event_key = redis_client.get_key_by_filename(filename)
-    total_bytes = event.get("total_bytes") or event.get("total_bytes_estimate", 0)
-    event_data = {
-        "event_key": event_key,
-        "status": event["status"],
-        "processed_bytes": event.get("processed_bytes", total_bytes),
-        "total_bytes": total_bytes,
-    }
-    redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
-
-
 async def check_state(episodes: Iterable[Episode]) -> list:
     """ Allows to get info about download progress for requested episodes """
 
@@ -148,15 +130,18 @@ async def check_state(episodes: Iterable[Episode]) -> list:
             total_file_size = current_state["total_bytes"]
             total_file_size_mb = round(total_file_size / 1024 / 1024, 2)
             completed = int((100 * current_file_size) / total_file_size)
+            status = current_state["status"]
         else:
             current_file_size = 0
             current_file_size_mb = 0
             total_file_size = 0
             total_file_size_mb = 0
             completed = 0
+            status = EpisodeStatuses.pending
 
         result.append(
             {
+                "status": status,
                 "episode_id": episode.id,
                 "episode_title": episode.title,
                 "podcast_id": episode.podcast_id,

@@ -59,9 +59,9 @@ MEDIA_URL = "/media/audio/"
 STATIC_URL = "/static/"
 SITE_URL = os.getenv("SITE_URL", "http://podcast.site.com/")
 
-DOWNLOAD_EVENT_REDIS_TTL = 20 * 60  # 20 minutes
-RQ_DEFAULT_TIMEOUT = 8 * 3600  # 8 hours
-
+DOWNLOAD_EVENT_REDIS_TTL = 60 * 60  # 60 minutes
+RQ_DEFAULT_TIMEOUT = 24 * 3600  # 24 hours
+FFMPEG_TIMEOUT = 2 * 60 * 60  # 2 hours
 
 TESTING = "nosetests" in sys.argv[0]
 SENTRY_DSN = os.getenv("SENTRY_DSN")
