@@ -10,7 +10,8 @@ import youtube_dl
 import settings
 from modules.youtube.exceptions import YoutubeExtractInfoError, FFMPegPreparationError
 from modules.podcast.utils import get_file_size
-from common.utils import get_logger, episode_process_hook, EpisodeStatuses
+from common.utils import get_logger
+from podcast.utils import episode_process_hook, EpisodeStatuses
 
 logger = get_logger(__name__)
 
@@ -105,7 +106,7 @@ def ffmpeg_preparation(filename: str):
     episode_process_hook(
         status=EpisodeStatuses.episode_postprocessing,
         filename=filename,
-        total_bytes=get_file_size(filename) * 1.8,  # result file approximately more to 80% of downloading file
+        total_bytes=get_file_size(filename),
         processed_bytes=0
     )
     tmp_filename = os.path.join(settings.TMP_AUDIO_PATH, f"tmp_{filename}")

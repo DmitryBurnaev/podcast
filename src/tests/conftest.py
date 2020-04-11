@@ -13,10 +13,11 @@ import pytest
 
 from app import create_app
 from common.models import database
+from common.storage import StorageS3
 from common.utils import database_init
 from modules.accounts.models import User
 from modules.podcast.models import Podcast, Episode
-from .mocks import MockYoutube, MockRedisClient
+from .mocks import MockYoutube, MockRedisClient, MockS3Client
 
 
 def get_user_data() -> Tuple[str, str]:
@@ -154,6 +155,18 @@ def mocked_redis() -> MockRedisClient:
     yield patcher.kwargs["return_value"]
     del mock_redis_client
     patcher.stop()
+
+
+@pytest.fixture
+def mocked_s3(monkeypatch) -> MockS3Client:
+    mock_s3_client = MockS3Client()
+    monkeypatch.setattr(StorageS3, "__init__", lambda x: ...)
+    yield mock_s3_client
+    # patcher = patch("common.utils.get_s3_client", return_value=mock_s3_client)
+    # patcher.start()
+    # yield patcher.kwargs["return_value"]
+    del mock_s3_client
+    # patcher.stop()
 
 
 named_urls = namedtuple(

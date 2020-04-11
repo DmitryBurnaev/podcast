@@ -1,5 +1,7 @@
 import settings
-from common.utils import get_logger, upload_file
+from common.storage import StorageS3
+from common.utils import get_logger
+from podcast.utils import upload_episode
 from modules.podcast.models import Episode
 from modules.youtube.exceptions import YoutubeException
 from modules.youtube import utils as youtube_utils
@@ -39,7 +41,7 @@ def _update_episode_data(source_id: str, update_data: dict):
     ).execute()
 
 
-def _update_episode_state(source_id: str, file_size: int):
+def _update_episodes(source_id: str, file_size: int):
     """ Allows to mark ALL episodes (exclude archived) with provided source_id as published """
 
     logger.info(f"Episodes with source #{source_id}: updating states")
@@ -50,6 +52,12 @@ def _update_episode_state(source_id: str, file_size: int):
     })
 
 
+def _get_file_size(filename: str):
+    storage = StorageS3()
+    return storage.get_file_size(filename)
+
+
+# TODO: refactor me! use class-style for this task
 def download_episode(youtube_link: str, episode_id: int):
     """ Allows to download youtube video and recreate specific rss (by requested episode_id) """
 
@@ -58,11 +66,11 @@ def download_episode(youtube_link: str, episode_id: int):
         "=== [%s] START downloading process URL: %s FILENAME: %s ===",
         episode.source_id, youtube_link, episode.file_name
     )
+    stored_file_size = StorageS3().get_file_size(episode.file_name)
 
-    stored_file_size = podcast_utils.get_remote_file_size(episode.file_name)
     if stored_file_size and stored_file_size == episode.file_size:
         logger.info("[%s] Episode already downloaded and file correct. Downloading will be ignored.", episode.source_id)
-        _update_episode_state(episode.source_id, stored_file_size)
+        _update_episodes(episode.source_id, stored_file_size)
         _update_all_rss(episode.source_id)
         return EPISODE_DOWNLOADING_IGNORED
 
@@ -72,7 +80,7 @@ def download_episode(youtube_link: str, episode_id: int):
             "Removing not-correct file %s and reloading it from youtube.",
             episode.source_id, episode.status, episode.file_name
         )
-        podcast_utils.delete_remote_file(episode.file_name)
+        StorageS3().delete_file(episode.file_name)
 
     logger.info(f"[%s] Mark all episodes with source_id [%s] as downloading.", episode.source_id, episode.source_id)
     query = Episode.update(status=Episode.STATUS_DOWNLOADING).where(
@@ -97,14 +105,13 @@ def download_episode(youtube_link: str, episode_id: int):
     logger.info("=== [%s] POST PROCESSING was done === ", episode.source_id)
 
     # ----- uploading file to cloud -----
-    remote_url = upload_file(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
+    remote_url = upload_episode(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
     _update_episode_data(episode.source_id, {"file_name": result_filename, "remote_url": remote_url})
     logger.info("=== [%s] UPLOADING was done === ", episode.source_id)
     # -----------------------------------
 
     # ----- update episodes data -------
-    file_size = podcast_utils.get_remote_file_size(result_filename)
-    _update_episode_state(episode.source_id, file_size)
+    _update_episodes(episode.source_id, file_size=StorageS3().get_file_size(result_filename))
     _update_all_rss(episode.source_id)
     podcast_utils.delete_file(result_filename)  # remove tmp file
     # -----------------------------------

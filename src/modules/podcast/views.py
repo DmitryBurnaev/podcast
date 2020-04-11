@@ -11,21 +11,20 @@ from aiohttp import web
 from cerberus import Validator
 
 from app_i18n import aiohttp_translations
+from common.storage import StorageS3
 from modules.youtube.exceptions import YoutubeExtractInfoError
 
 import settings
 from common.decorators import login_required, errors_wrapped, json_response
 from common.excpetions import YoutubeFetchError
 from common.models import BaseModel
-from common.utils import redirect, add_message, is_mobile_app, EpisodeStatuses
+from common.utils import redirect, add_message, is_mobile_app
+from podcast.utils import EpisodeStatuses
 from common.views import BaseApiView
 from modules.podcast import tasks
 from modules.podcast.models import Podcast, Episode
-from modules.podcast.utils import delete_file, delete_remote_file, get_file_name
-from modules.youtube.utils import (
-    get_youtube_info,
-    get_video_id,
-)
+from modules.podcast.utils import delete_file, get_file_name
+from modules.youtube.utils import get_youtube_info, get_video_id
 from modules.podcast.utils import check_state
 
 
@@ -148,11 +147,8 @@ class PodcastDeleteApiView(BasePodcastApiView):
 
     @staticmethod
     async def _delete_files(podcast: Podcast, episodes: List[Episode]):
+        await StorageS3().delete_files_async([episode.file_name for episode in episodes])
         loop = asyncio.get_running_loop()
-        for episode in episodes:
-            await loop.run_in_executor(
-                None, partial(delete_remote_file, episode.file_name)
-            )
         rss_file_path = Path(settings.RESULT_RSS_PATH) / f"{podcast.publish_id}.xml"
         await loop.run_in_executor(None, partial(delete_file, rss_file_path))
 
@@ -296,8 +292,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
             )
             return
 
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, partial(delete_remote_file, episode.file_name))
+        await StorageS3().delete_files_async(episode.file_name)
 
     @login_required
     async def get(self):

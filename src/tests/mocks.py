@@ -46,3 +46,12 @@ class MockRedisClient:
 
     async def async_get_many(self, *_, **__):
         return self.get_many()
+
+
+class MockS3Client:
+    def __init__(self, content=None):
+        self.upload_file = Mock(return_value=None)
+        self.delete_file = Mock(return_value=None)
+        self.delete_files_async = Mock(return_value=None)
+        self.get_file_size = Mock(return_value=None)
+        self.get_file_info = Mock(return_value=None)
