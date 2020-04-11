@@ -1,29 +1,31 @@
+import enum
 import os
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import Union, Iterable, Optional
+from urllib.parse import urljoin
 
-import botocore
-import botocore.exceptions
 from jinja2 import Template
 
 import settings
 from common.redis import RedisClient
-from common.utils import get_logger, get_s3_client, EpisodeStatuses
+from common.storage import StorageS3
+from common.utils import get_logger
 from modules.podcast.models import Podcast, Episode
 
 logger = get_logger(__name__)
 
 
-def _create_rss_file(template: Template, podcast: Podcast, extra_context: dict):
-    rss_filename = os.path.join(settings.RESULT_RSS_PATH, f"{podcast.publish_id}.xml")
-    logger.info(
-        f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]"
-    )
-    with open(rss_filename, "w") as fh:
-        result_rss = template.render(podcast=podcast, **extra_context)
-        fh.write(result_rss)
-    logger.info(f"Podcast #{podcast.publish_id}: Generation DONE")
+class EpisodeStatuses(str, enum.Enum):
+    pending = "pending"
+    episode_downloading = "episode_downloading"
+    episode_postprocessing = "episode_postprocessing"
+    episode_uploading = "episode_uploading"
+    cover_downloading = "cover_downloading"
+    cover_uploading = "cover_uploading"
+    error = "error"
+    finished = "finished"
 
 
 def generate_rss(podcast_id: int):
@@ -41,7 +43,12 @@ def generate_rss(podcast_id: int):
     with open(os.path.join(settings.TEMPLATE_PATH, "rss", "feed_template.xml")) as fh:
         template = Template(fh.read())
 
-    _create_rss_file(template, podcast, context)
+    rss_filename = os.path.join(settings.RESULT_RSS_PATH, f"{podcast.publish_id}.xml")
+    logger.info(f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]")
+    with open(rss_filename, "w") as fh:
+        result_rss = template.render(podcast=podcast, **context)
+        fh.write(result_rss)
+
     logger.info(f"Podcast #{podcast_id}: RSS generation has been finished.")
 
 
@@ -60,21 +67,6 @@ def delete_file(filename: Union[str, Path]):
         logger.info(f"File {full_path} deleted")
 
 
-def delete_remote_file(filename: Union[str, Path]):
-    """ Delete file from S3 storage """
-
-    s3 = get_s3_client()
-    try:
-        remote_path = os.path.join(settings.S3_BUCKET_AUDIO_PATH, filename)
-        file_deleted = s3.delete_object(Key=remote_path, Bucket=settings.S3_BUCKET_NAME)
-    except botocore.exceptions.ClientError:
-        logger.info("File %s was not found on s3 storage", filename)
-    except Exception as error:
-        logger.exception("Couldn't deleted file on s3 storage. Error: %s", error)
-    else:
-        logger.info("File %s found and deleted: %s", filename, file_deleted)
-
-
 def get_file_name(video_id: str, file_ext: str = settings.RESULT_FILE_EXT) -> str:
     return f"{video_id}_{uuid.uuid4().hex}.{file_ext}"
 
@@ -86,27 +78,6 @@ def get_file_size(file_name):
     except FileNotFoundError:
         logger.info("File %s not found. Return size 0", file_name)
         return 0
-
-
-def get_remote_file_size(filename: Optional[str]) -> int:
-    """
-    Allows to find file on remote storage (S3)
-    Headers content info about downloaded file (there is a content-length / file size)
-    """
-    if filename:
-        s3 = get_s3_client()
-        try:
-            remote_path = os.path.join(settings.S3_BUCKET_AUDIO_PATH, filename)
-            file_head = s3.head_object(Key=remote_path, Bucket=settings.S3_BUCKET_NAME)
-        except botocore.exceptions.ClientError:
-            logger.info("File %s was not found on s3 storage", filename)
-        except Exception as error:
-            logger.exception("Couldn't fetch file on s3 storage. Error: %s", error)
-        else:
-            logger.info("File %s found with headers: %s", filename, file_head)
-            return int(file_head['ResponseMetadata']['HTTPHeaders']['content-length'])
-
-    return 0
 
 
 async def check_state(episodes: Iterable[Episode]) -> list:
@@ -154,3 +125,58 @@ async def check_state(episodes: Iterable[Episode]) -> list:
         )
 
     return result
+
+
+def upload_process_hook(filename: str, chunk: int):
+    """
+    Allows to handle uploading to Yandex.Cloud (S3) and update redis state (for user's progress).
+    It is called by `s3.upload_file` (`podcast.utils.upload_episode`)
+    """
+    episode_process_hook(
+        filename=filename,
+        status=EpisodeStatuses.episode_uploading,
+        chunk=chunk
+    )
+
+
+def episode_process_hook(status: str, filename: str, total_bytes: int = 0, processed_bytes: int = None, chunk: int = 0):
+    """ Allows to handle processes of performing episode's file.
+    """
+    redis_client = RedisClient()
+    filename = os.path.basename(filename)
+    event_key = redis_client.get_key_by_filename(filename)
+    current_event_data = redis_client.get(event_key)
+    total_bytes = total_bytes or current_event_data.get("total_bytes")
+    if processed_bytes is None:
+        processed_bytes = current_event_data.get("processed_bytes") + chunk
+
+    event_data = {
+        "event_key": event_key,
+        "status": status,
+        "processed_bytes": processed_bytes,
+        "total_bytes": total_bytes,
+    }
+    redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
+    progress = "{0:.2%}".format(processed_bytes / event_data.get("total_bytes", 0))
+    logger.debug("[%s] for %s: %s", status, filename, progress)
+
+
+def upload_episode(filename: str, remote_directory: str = None) -> Optional[str]:
+    """ Allows to upload src_filename to Yandex.Cloud (aka AWS S3) """
+
+    src_filename = os.path.join(settings.TMP_AUDIO_PATH, filename)
+    dst_filename = os.path.join(remote_directory, filename)
+    episode_process_hook(
+        filename=filename,
+        status=EpisodeStatuses.episode_uploading,
+        processed_bytes=0
+    )
+    logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
+    s3 = StorageS3()
+    result_uploading = s3.upload_file(src_filename, dst_filename, callback=partial(upload_process_hook, filename))
+
+    result_url = urljoin(settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_filename))
+    logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
+    logger.debug("Finished uploading for file %s. \n Result url is %s", dst_filename, result_url)
+    logger.debug(result_uploading)
+    return result_url

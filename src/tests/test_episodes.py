@@ -1,5 +1,4 @@
 import json
-import os
 import time
 from operator import itemgetter
 from typing import List
@@ -9,7 +8,7 @@ import peewee
 import pytest
 from aiohttp import ClientResponse
 
-import settings
+from podcast.utils import EpisodeStatuses
 from modules.accounts.models import User
 from modules.podcast import tasks
 
@@ -71,7 +70,7 @@ async def test_episodes__create__invalid_request__fail(
     assert response.headers["Location"] == urls.episodes_list
 
 
-async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_youtube):
+async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_youtube, mocked_s3):
     youtube_link = mocked_youtube.watch_url
     request_data = {"youtube_link": youtube_link}
     response = await client.post(
@@ -86,7 +85,7 @@ async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_yo
 
 
 async def test_episodes__create__video_unavailable__fail(
-    client, db_objects, podcast, urls, mocked_youtube
+    client, db_objects, podcast, urls, mocked_youtube, mocked_s3
 ):
     mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError()
     request_data = {"youtube_link": mocked_youtube.watch_url}
@@ -103,7 +102,7 @@ async def test_episodes__create__video_unavailable__fail(
 
 
 async def test_episodes__create__youtube_unexpected_error__fail(
-    client, db_objects, podcast, urls, mocked_youtube
+    client, db_objects, podcast, urls, mocked_youtube, mocked_s3
 ):
     mocked_youtube.extract_info.side_effect = ValueError("Ooops")
     request_data = {"youtube_link": mocked_youtube.watch_url}
@@ -134,7 +133,7 @@ async def test_episodes__create__incorrect_link__fail(
 
 
 async def test_episodes__create__same_episode_in_same_podcast__ok(
-    client, db_objects, podcast, urls, episode_data, mocked_youtube
+    client, db_objects, podcast, urls, episode_data, mocked_youtube, mocked_s3
 ):
     episode_data.update(
         {"source_id": mocked_youtube.video_id, "watch_url": mocked_youtube.watch_url}
@@ -164,6 +163,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     episode_data,
     urls,
     mocked_youtube: MockYoutube,
+        mocked_s3,
 ):
     updated_title = f"Updated title for video {mocked_youtube.video_id}"
     updated_description = f"Updated description for video {mocked_youtube.video_id}"
@@ -218,6 +218,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     episode_data,
     urls,
     mocked_youtube: MockYoutube,
+        mocked_s3,
 ):
     mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError("Ooops")
 
@@ -261,7 +262,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
 
 
 async def test_episodes__create__check_for_start_downloading__ok(
-    client, db_objects, podcast, episode_data, urls, mocked_youtube
+    client, db_objects, podcast, episode_data, urls, mocked_youtube, mocked_s3
 ):
     assert podcast.download_automatically
 
@@ -285,34 +286,24 @@ async def test_episodes__create__check_for_start_downloading__ok(
     )
 
 
-async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls_tpl):
+async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls_tpl, mocked_s3):
     podcast_id = episode_data["podcast_id"]
     episode_data["source_id"] = f"source_{time.time_ns()}"
     episode_data["filename"] = f"fn_{time.time_ns()}"
     episode = await db_objects.create(Episode, **episode_data)
 
-    with patch("os.remove") as mocked_os_remove:
-        url = urls_tpl.episodes_delete.format(
-            podcast_id=podcast_id, episode_id=episode.id
-        )
-        response = await client.get(url, allow_redirects=False)
-        mocked_os_remove.assert_called()
-        mocked_os_remove.assert_called_with(
-            os.path.join(settings.TMP_AUDIO_PATH, episode.file_name)
-        )
+    url = urls_tpl.episodes_delete.format(podcast_id=podcast_id, episode_id=episode.id)
+    response = await client.get(url, allow_redirects=False)
+    mocked_s3.delete_files_async.assert_called_with(episode.file_name)
 
     assert response.status == 302
-    assert response.headers["Location"] == urls_tpl.podcasts_details.format(
-        podcast_id=podcast_id
-    )
+    assert response.headers["Location"] == urls_tpl.podcasts_details.format(podcast_id=podcast_id)
 
     with pytest.raises(peewee.DoesNotExist):
         await db_objects.get(Episode, id=episode.id)
 
 
-@pytest.mark.parametrize(
-    "same_episode_status, delete_called", [("new", True), ("published", False)]
-)
+@pytest.mark.parametrize("same_episode_status, delete_called", [("new", True), ("published", False)])
 async def test_episodes__delete__same_episode_exists__ok(
     same_episode_status,
     delete_called,
@@ -323,6 +314,7 @@ async def test_episodes__delete__same_episode_exists__ok(
     episode_data,
     urls_tpl,
     mocked_youtube,
+        mocked_s3,
 ):
     episode_data.update(
         {
@@ -356,9 +348,7 @@ async def test_episodes__delete__same_episode_exists__ok(
     assert response_messages == expected_messages
 
 
-async def test_episodes__download__start_downloading__ok(
-    client, podcast, episode, urls
-):
+async def test_episodes__download__start_downloading__ok(client, podcast, episode, urls):
     with patch("rq.queue.Queue.enqueue") as rq_mock:
         response = await client.get(urls.episodes_download, allow_redirects=False)
         assert response.status == 302
@@ -377,7 +367,7 @@ async def test_episodes__download__start_downloading__ok(
 
 
 async def test_episodes__create__mobile_redirect__ok(
-    client, db_objects, podcast, episode_data, urls, mocked_youtube
+    client, db_objects, podcast, episode_data, urls, mocked_youtube, mocked_s3
 ):
     youtube_link = mocked_youtube.watch_url
     request_data = {"youtube_link": youtube_link}
@@ -472,6 +462,7 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 
     expected_progress = [
         {
+            "status": EpisodeStatuses.episode_downloading,
             "episode_id": p1_episode_downloading.id,
             "episode_title": p1_episode_downloading.title,
             "podcast_id": p1_episode_downloading.podcast_id,
@@ -483,6 +474,7 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
             "total_file_size__mb": 2.00,
         },
         {
+            "status": EpisodeStatuses.episode_downloading,
             "episode_id": p2_episode_downloading.id,
             "episode_title": p2_episode_downloading.title,
             "podcast_id": p2_episode_downloading.podcast_id,

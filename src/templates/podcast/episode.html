@@ -14,15 +14,15 @@
         <h4 class="h4 caption">{{ episode.title }}</h4>
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group mr-2">
-                {% if episode.status == episode.STATUS_DOWNLOADING %}
-                    <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDownloadModal" disabled>
-                        {% trans %}Downloading...{% endtrans %}
-                    </button>
-                {% else %}
+{#                {% if episode.status == episode.STATUS_DOWNLOADING %}#}
+{#                    <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDownloadModal" disabled>#}
+{#                        {% trans %}Downloading...{% endtrans %}#}
+{#                    </button>#}
+{#                {% else %}#}
                     <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#beSureDownloadModal">
                         {% trans %}Download{% endtrans %}
                     </button>
-                {% endif %}
+{#                {% endif %}#}
                 <button type="button" class="btn btn-sm btn-outline-secondary no-box-shadow btn-33" data-toggle="modal" data-target="#updateEpisode">
                     {% trans %}Edit{% endtrans %}
                 </button>
