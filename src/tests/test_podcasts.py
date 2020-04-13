@@ -85,7 +85,7 @@ async def test_podcasts__create__ok(client, db_objects, podcast, urls):
     assert created_podcast.description == "test description"
 
 
-async def test_podcasts__delete__ok(client, db_objects, podcast, podcast_data, episode_data, urls, urls_tpl):
+async def test_podcasts__delete__ok(client, db_objects, podcast, podcast_data, episode_data, urls, urls_tpl, mocked_s3):
     podcast_data["publish_id"] = str(time.time())
     another_podcast: Podcast = await db_objects.create(Podcast, **podcast_data)
 
@@ -97,14 +97,10 @@ async def test_podcasts__delete__ok(client, db_objects, podcast, podcast_data, e
         url = urls_tpl.podcasts_delete.format(podcast_id=another_podcast.id)
         response = await client.get(url, allow_redirects=False)
         mocked_os_remove.assert_called()
-        expected_remove_files = [
-            os.path.join(settings.TMP_AUDIO_PATH, episode.file_name),
-            os.path.join(settings.RESULT_RSS_PATH, f"{another_podcast.publish_id}.xml"),
-        ]
-        actual_remove_files = [
-            call_args[0][0] for call_args in mocked_os_remove.call_args_list
-        ]
-        assert actual_remove_files == expected_remove_files
+        mocked_os_remove.assert_called_with(
+            os.path.join(settings.RESULT_RSS_PATH, f"{another_podcast.publish_id}.xml")
+        )
+        mocked_s3.delete_file.assert_called_with(episode.file_name)
 
     assert response.status == 302
     assert response.headers["Location"] == urls_tpl.podcasts_list

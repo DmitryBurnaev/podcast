@@ -85,13 +85,16 @@ class Episode(BaseModel):
     STATUS_DOWNLOADING = "downloading"
     STATUS_PUBLISHED = "published"
     STATUS_ARCHIVED = "archived"
+    STATUS_ERROR = "error"
 
     STATUS_CHOICES = (
         (STATUS_NEW, _("New")),
         (STATUS_DOWNLOADING, _("Downloading")),
         (STATUS_PUBLISHED, _("Published")),
         (STATUS_ARCHIVED, _("Archived")),
+        (STATUS_ERROR, _("Error")),
     )
+    PROGRESS_STATUSES = (STATUS_DOWNLOADING, STATUS_ERROR)
 
     source_id = peewee.CharField(index=True, max_length=32, null=False)
     podcast = peewee.ForeignKeyField(Podcast, related_name="episodes")
@@ -116,22 +119,22 @@ class Episode(BaseModel):
         db_table = "episodes"
 
     def __str__(self):
-        return f'<Episode {self.source_id} [{self.status}] "{self.title[:20]}..." >'
+        return f'<Episode #{self.id} {self.source_id} [{self.status}] "{self.title[:10]}..." >'
 
     @classmethod
-    async def get_in_progress(cls, objects, user_id):
+    async def get_in_progress(cls, objects, user_id) -> peewee.Query:
         """ Return downloading episodes """
         return await objects.execute(
             cls.select()
-            .where(cls.status == cls.STATUS_DOWNLOADING, cls.created_by_id == user_id)
+            .where(cls.status.in_(cls.PROGRESS_STATUSES), cls.created_by_id == user_id)
             .order_by(Episode.created_at.desc())
         )
 
     @property
-    def safe_image_url(self):
+    def safe_image_url(self) -> str:
         return escape(self.image_url or "")
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         file_name = self.file_name or "unknown"
         return f"audio/{file_name.split('.')[-1]}"

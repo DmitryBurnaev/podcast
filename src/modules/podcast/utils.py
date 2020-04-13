@@ -145,8 +145,8 @@ def episode_process_hook(status: str, filename: str, total_bytes: int = 0, proce
     redis_client = RedisClient()
     filename = os.path.basename(filename)
     event_key = redis_client.get_key_by_filename(filename)
-    current_event_data = redis_client.get(event_key)
-    total_bytes = total_bytes or current_event_data.get("total_bytes")
+    current_event_data = redis_client.get(event_key) or {}
+    total_bytes = total_bytes or current_event_data.get("total_bytes", 0)
     if processed_bytes is None:
         processed_bytes = current_event_data.get("processed_bytes") + chunk
 
@@ -157,7 +157,10 @@ def episode_process_hook(status: str, filename: str, total_bytes: int = 0, proce
         "total_bytes": total_bytes,
     }
     redis_client.set(event_key, event_data, ttl=settings.DOWNLOAD_EVENT_REDIS_TTL)
-    progress = "{0:.2%}".format(processed_bytes / event_data.get("total_bytes", 0))
+    if processed_bytes and total_bytes:
+        progress = "{0:.2%}".format(processed_bytes / total_bytes)
+    else:
+        progress = f"processed = {processed_bytes} | total = {total_bytes}"
     logger.debug("[%s] for %s: %s", status, filename, progress)
 
 
@@ -174,6 +177,10 @@ def upload_episode(filename: str, remote_directory: str = None) -> Optional[str]
     logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
     s3 = StorageS3()
     result_uploading = s3.upload_file(src_filename, dst_filename, callback=partial(upload_process_hook, filename))
+    if result_uploading != s3.CODE_OK:
+        logger.warning("Couldn't upload file to S3 storage. SKIP")
+        episode_process_hook(status=EpisodeStatuses.error, filename=filename)
+        return
 
     result_url = urljoin(settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_filename))
     logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
