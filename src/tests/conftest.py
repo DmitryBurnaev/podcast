@@ -5,18 +5,21 @@ import time
 import uuid
 from collections import namedtuple
 from typing import Tuple
-from unittest.mock import patch
+from unittest.mock import Mock
 from hashlib import blake2b
 
 import peewee_async
 import pytest
+from youtube_dl import YoutubeDL
 
 from app import create_app
 from common.models import database
+from common.redis import RedisClient
 from common.storage import StorageS3
 from common.utils import database_init
 from modules.accounts.models import User
 from modules.podcast.models import Podcast, Episode
+from modules.youtube import utils as youtube_utils
 from .mocks import MockYoutube, MockRedisClient, MockS3Client
 
 
@@ -134,39 +137,35 @@ def episode(db_objects, episode_data):
 
 
 @pytest.fixture
-def mocked_youtube() -> MockYoutube:
+def mocked_youtube(monkeypatch) -> MockYoutube:
     mock_youtube = MockYoutube()
-    patcher = patch(
-        "modules.youtube.utils.youtube_dl.YoutubeDL.__new__", return_value=mock_youtube
-    )
-    patcher.start()
-    yield patcher.kwargs["return_value"]
+    monkeypatch.setattr(YoutubeDL, "__new__", lambda *_, **__: mock_youtube)
+    yield mock_youtube
     del mock_youtube
-    patcher.stop()
 
 
 @pytest.fixture
-def mocked_redis() -> MockRedisClient:
+def mocked_redis(monkeypatch) -> MockRedisClient:
     mock_redis_client = MockRedisClient()
-    patcher = patch(
-        "modules.youtube.utils.RedisClient.__new__", return_value=mock_redis_client
-    )
-    patcher.start()
-    yield patcher.kwargs["return_value"]
+    monkeypatch.setattr(RedisClient, "__new__", lambda *_, **__: mock_redis_client)
+    yield mock_redis_client
     del mock_redis_client
-    patcher.stop()
 
 
 @pytest.fixture
 def mocked_s3(monkeypatch) -> MockS3Client:
     mock_s3_client = MockS3Client()
-    monkeypatch.setattr(StorageS3, "__init__", lambda x: ...)
+    monkeypatch.setattr(StorageS3, "__new__", lambda *_, **__: mock_s3_client)
     yield mock_s3_client
-    # patcher = patch("common.utils.get_s3_client", return_value=mock_s3_client)
-    # patcher.start()
-    # yield patcher.kwargs["return_value"]
     del mock_s3_client
-    # patcher.stop()
+
+
+@pytest.fixture
+def mocked_ffmpeg(monkeypatch) -> Mock:
+    mocked_ffmpeg_function = Mock()
+    monkeypatch.setattr(youtube_utils, "ffmpeg_preparation", mocked_ffmpeg_function)
+    yield mocked_ffmpeg_function
+    del mocked_ffmpeg_function
 
 
 named_urls = namedtuple(

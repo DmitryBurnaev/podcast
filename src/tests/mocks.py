@@ -47,11 +47,23 @@ class MockRedisClient:
     async def async_get_many(self, *_, **__):
         return self.get_many()
 
+    @staticmethod
+    def get_key_by_filename(filename):
+        return filename
+
 
 class MockS3Client:
-    def __init__(self, content=None):
-        self.upload_file = Mock(return_value=None)
-        self.delete_file = Mock(return_value=None)
-        self.delete_files_async = Mock(return_value=None)
-        self.get_file_size = Mock(return_value=None)
-        self.get_file_info = Mock(return_value=None)
+    CODE_OK = 0
+
+    def __init__(self):
+        self.upload_file = Mock(return_value=self.CODE_OK)
+        self.delete_file = Mock(return_value=self.CODE_OK)
+        self.get_file_size = Mock(return_value=0)
+        self.get_file_info = Mock(return_value={})
+
+    def get_mocks(self):
+        return [attr for attr, val in self.__dict__.items() if callable(val)]
+
+    async def delete_files_async(self, filenames, *args, **kwargs):
+        for filename in filenames:
+            return self.delete_file(filename, *args, **kwargs)

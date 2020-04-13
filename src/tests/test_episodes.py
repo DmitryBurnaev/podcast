@@ -8,7 +8,7 @@ import peewee
 import pytest
 from aiohttp import ClientResponse
 
-from podcast.utils import EpisodeStatuses
+from modules.podcast.utils import EpisodeStatuses
 from modules.accounts.models import User
 from modules.podcast import tasks
 
@@ -294,7 +294,7 @@ async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls
 
     url = urls_tpl.episodes_delete.format(podcast_id=podcast_id, episode_id=episode.id)
     response = await client.get(url, allow_redirects=False)
-    mocked_s3.delete_files_async.assert_called_with(episode.file_name)
+    mocked_s3.delete_file.assert_called_with(episode.file_name)
 
     assert response.status == 302
     assert response.headers["Location"] == urls_tpl.podcasts_details.format(podcast_id=podcast_id)
@@ -314,7 +314,7 @@ async def test_episodes__delete__same_episode_exists__ok(
     episode_data,
     urls_tpl,
     mocked_youtube,
-        mocked_s3,
+    mocked_s3,
 ):
     episode_data.update(
         {
@@ -331,12 +331,11 @@ async def test_episodes__delete__same_episode_exists__ok(
         {"podcast_id": another_podcast.id, "status": same_episode_status}
     )
     await db_objects.create(Episode, **episode_data)
-    with patch("os.remove") as mocked_os_remove:
-        url = urls_tpl.episodes_delete.format(
-            podcast_id=podcast.id, episode_id=episode.id
-        )
-        response = await client.get(url, allow_redirects=False)
-        assert mocked_os_remove.called is delete_called
+    url = urls_tpl.episodes_delete.format(
+        podcast_id=podcast.id, episode_id=episode.id
+    )
+    response = await client.get(url, allow_redirects=False)
+    assert mocked_s3.delete_file.called is delete_called
 
     response_messages = get_session_messages(response)
     expected_messages = [f"Episode for youtube ID {episode.source_id} was removed."]
@@ -388,10 +387,10 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
     podcast_data["publish_id"] = str(time.time())
     podcast_1 = podcast
     podcast_2 = await db_objects.create(Podcast, **podcast_data)
-    src_id_1 = (generate_video_id(),)
-    src_id_2 = (generate_video_id(),)
-    src_id_3 = (generate_video_id(),)
-    src_id_4 = (generate_video_id(),)
+    src_id_1 = generate_video_id()
+    src_id_2 = generate_video_id()
+    src_id_3 = generate_video_id()
+    src_id_4 = generate_video_id()
 
     podcast_1__episode_data__status_new = {
         **episode_data,
@@ -448,10 +447,12 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 
     mocked_redis.get_many.return_value = {
         p1_episode_downloading.file_name.partition(".")[0]: {
+            "status": EpisodeStatuses.episode_downloading,
             "processed_bytes": 1024 * 1024,
             "total_bytes": 2 * 1024 * 1024,
         },
         p2_episode_downloading.file_name.partition(".")[0]: {
+            "status": EpisodeStatuses.episode_downloading,
             "processed_bytes": 1024 * 1024,
             "total_bytes": 4 * 1024 * 1024,
         },
@@ -463,11 +464,12 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
     expected_progress = [
         {
             "status": EpisodeStatuses.episode_downloading,
+            "status_display": "Downloading",
             "episode_id": p1_episode_downloading.id,
             "episode_title": p1_episode_downloading.title,
             "podcast_id": p1_episode_downloading.podcast_id,
             "podcast_publish_id": podcast_1.publish_id,
-            "completed": 50.0,  # 1MB from 2MB
+            "completed": 50,  # 1MB from 2MB
             "current_file_size": 1024 * 1024,
             "current_file_size__mb": 1.00,
             "total_file_size": p1_episode_downloading.file_size,
@@ -475,11 +477,12 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
         },
         {
             "status": EpisodeStatuses.episode_downloading,
+            "status_display": "Downloading",
             "episode_id": p2_episode_downloading.id,
             "episode_title": p2_episode_downloading.title,
             "podcast_id": p2_episode_downloading.podcast_id,
             "podcast_publish_id": podcast_2.publish_id,
-            "completed": 25.0,  # 1MB from 4MB
+            "completed": 25,  # 1MB from 4MB
             "current_file_size": 1024 * 1024,
             "current_file_size__mb": 1.00,
             "total_file_size": p2_episode_downloading.file_size,
@@ -535,17 +538,19 @@ async def test_episodes__progress__filter_by_user__ok(
 
     mocked_redis.get_many.return_value = {
         p1_episode__requested_user.file_name.partition(".")[0]: {
+            "status": EpisodeStatuses.episode_downloading,
             "processed_bytes": 1024 * 1024,
             "total_bytes": 2 * 1024 * 1024,
         },
         p2_episode__other_user.file_name.partition(".")[0]: {
+            "status": EpisodeStatuses.episode_downloading,
             "processed_bytes": 1024 * 1024,
             "total_bytes": 4 * 1024 * 1024,
         },
     }
     response = await client.get(urls.progress_api, allow_redirects=False)
-
-    assert response.status == 200, f"Progress API is not available: {response.text}"
+    response_text = await response.text()
+    assert response.status == 200, f"Progress API is not available: {response_text}"
     actual_progress = await response.json()
 
     expected_episode_ids = [p2_episode__other_user.id]

@@ -1,7 +1,6 @@
 import settings
 from common.storage import StorageS3
 from common.utils import get_logger
-from podcast.utils import upload_episode
 from modules.podcast.models import Episode
 from modules.youtube.exceptions import YoutubeException
 from modules.youtube import utils as youtube_utils
@@ -41,20 +40,15 @@ def _update_episode_data(source_id: str, update_data: dict):
     ).execute()
 
 
-def _update_episodes(source_id: str, file_size: int):
+def _update_episodes(source_id: str, file_size: int, status: str = Episode.STATUS_PUBLISHED):
     """ Allows to mark ALL episodes (exclude archived) with provided source_id as published """
 
     logger.info(f"Episodes with source #{source_id}: updating states")
-    _update_episode_data(source_id, {
-        "status": Episode.STATUS_PUBLISHED,
-        "published_at": Episode.created_at,
-        "file_size": file_size,
-    })
+    update_data = {"status": status, "file_size": file_size}
+    if status == Episode.STATUS_PUBLISHED:
+        update_data["published_at"] = Episode.created_at
 
-
-def _get_file_size(filename: str):
-    storage = StorageS3()
-    return storage.get_file_size(filename)
+    _update_episode_data(source_id, update_data)
 
 
 # TODO: refactor me! use class-style for this task
@@ -105,7 +99,12 @@ def download_episode(youtube_link: str, episode_id: int):
     logger.info("=== [%s] POST PROCESSING was done === ", episode.source_id)
 
     # ----- uploading file to cloud -----
-    remote_url = upload_episode(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
+    remote_url = podcast_utils.upload_episode(result_filename, remote_directory=settings.S3_BUCKET_AUDIO_PATH)
+    if not remote_url:
+        logger.warning("=== [%s] UPLOADING was broken === ")
+        _update_episodes(episode.source_id, file_size=0, status=Episode.STATUS_ERROR)
+        return EPISODE_DOWNLOADING_ERROR
+
     _update_episode_data(episode.source_id, {"file_name": result_filename, "remote_url": remote_url})
     logger.info("=== [%s] UPLOADING was done === ", episode.source_id)
     # -----------------------------------

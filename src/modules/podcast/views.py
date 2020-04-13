@@ -19,11 +19,10 @@ from common.decorators import login_required, errors_wrapped, json_response
 from common.excpetions import YoutubeFetchError
 from common.models import BaseModel
 from common.utils import redirect, add_message, is_mobile_app
-from podcast.utils import EpisodeStatuses
 from common.views import BaseApiView
 from modules.podcast import tasks
 from modules.podcast.models import Podcast, Episode
-from modules.podcast.utils import delete_file, get_file_name
+from modules.podcast.utils import delete_file, get_file_name, EpisodeStatuses
 from modules.youtube.utils import get_youtube_info, get_video_id
 from modules.podcast.utils import check_state
 
@@ -292,7 +291,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
             )
             return
 
-        await StorageS3().delete_files_async(episode.file_name)
+        return await StorageS3().delete_files_async([episode.file_name])
 
     @login_required
     async def get(self):

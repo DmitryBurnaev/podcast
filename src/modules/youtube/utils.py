@@ -9,9 +9,8 @@ import youtube_dl
 
 import settings
 from modules.youtube.exceptions import YoutubeExtractInfoError, FFMPegPreparationError
-from modules.podcast.utils import get_file_size
+from modules.podcast.utils import get_file_size, episode_process_hook, EpisodeStatuses
 from common.utils import get_logger
-from podcast.utils import episode_process_hook, EpisodeStatuses
 
 logger = get_logger(__name__)
 
