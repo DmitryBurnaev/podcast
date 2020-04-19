@@ -46,7 +46,7 @@ def download_process_hook(event: dict):
         status=EpisodeStatuses.episode_downloading,
         filename=event["filename"],
         total_bytes=total_bytes,
-        processed_bytes=event.get("downloaded_bytes", total_bytes)
+        processed_bytes=event.get("downloaded_bytes", total_bytes),
     )
 
 
@@ -102,16 +102,16 @@ def ffmpeg_preparation(filename: str):
     """
 
     logger.info(f"Start FFMPEG preparations for {filename} === ")
+    src_path = os.path.join(settings.TMP_AUDIO_PATH, filename)
     episode_process_hook(
         status=EpisodeStatuses.episode_postprocessing,
         filename=filename,
-        total_bytes=get_file_size(filename),
-        processed_bytes=0
+        total_bytes=get_file_size(src_path),
+        processed_bytes=0,
     )
     tmp_filename = os.path.join(settings.TMP_AUDIO_PATH, f"tmp_{filename}")
-    result_filename = os.path.join(settings.TMP_AUDIO_PATH, filename)
     proc = subprocess.Popen(
-        ["ffmpeg", "-i", result_filename, "-strict", "-2", "-y", tmp_filename]
+        ["ffmpeg", "-i", src_path, "-strict", "-2", "-y", tmp_filename]
     )
     outs, errs = proc.communicate(timeout=settings.FFMPEG_TIMEOUT)
     if outs:
@@ -121,14 +121,14 @@ def ffmpeg_preparation(filename: str):
         episode_process_hook(status=EpisodeStatuses.error, filename=filename)
 
     try:
-        os.remove(result_filename)
-        os.rename(tmp_filename, result_filename)
+        os.remove(src_path)
+        os.rename(tmp_filename, src_path)
     except IOError as err:
         logger.exception("Failed to rename/remove tmp file after ffmpeg preparation")
         episode_process_hook(status=EpisodeStatuses.error, filename=filename)
         raise FFMPegPreparationError(err)
 
-    total_file_size = get_file_size(result_filename)
+    total_file_size = get_file_size(src_path)
     episode_process_hook(
         status=EpisodeStatuses.episode_postprocessing,
         filename=filename,

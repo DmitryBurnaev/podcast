@@ -60,7 +60,11 @@ def test_generate_rss__ok(db_objects, podcast, episode_data):
 
 @db_allow_sync
 def test_download_sound__episode_downloaded__file_correct__ignore_downloading__ok(
-    db_objects, podcast, episode_data, mocked_youtube: MockYoutube, mocked_s3: MockS3Client
+    db_objects,
+    podcast,
+    episode_data,
+    mocked_youtube: MockYoutube,
+    mocked_s3: MockS3Client,
 ):
     new_episode_data = {
         **episode_data,
@@ -99,7 +103,7 @@ def test_download_sound__episode_new__correct_downloading(
     episode_data,
     mocked_youtube: MockYoutube,
     mocked_s3: MockS3Client,
-    mocked_ffmpeg: Mock
+    mocked_ffmpeg: Mock,
 ):
     new_episode_data = {
         **episode_data,
@@ -116,7 +120,9 @@ def test_download_sound__episode_new__correct_downloading(
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
+        updated_episode: Episode = Episode.select().where(
+            Episode.id == episode.id
+        ).first()
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url, episode.file_name)
@@ -138,7 +144,7 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
     episode_data,
     mocked_youtube: MockYoutube,
     mocked_s3: MockS3Client,
-    mocked_ffmpeg: Mock
+    mocked_ffmpeg: Mock,
 ):
     new_episode_data = {
         **episode_data,
@@ -156,7 +162,9 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
+        updated_episode: Episode = Episode.select().where(
+            Episode.id == episode.id
+        ).first()
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url, episode.file_name)
@@ -170,7 +178,12 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
 @db_allow_sync
 @patch("modules.podcast.tasks.youtube_utils.download_audio")
 def test_download_sound__youtube_exception__download_rollback(
-    download_audio_mock, db_objects, podcast, episode_data, mocked_youtube: MockYoutube, mocked_s3: MockS3Client
+    download_audio_mock,
+    db_objects,
+    podcast,
+    episode_data,
+    mocked_youtube: MockYoutube,
+    mocked_s3: MockS3Client,
 ):
     new_episode_data = {
         **episode_data,

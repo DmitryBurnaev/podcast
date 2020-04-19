@@ -31,6 +31,7 @@ REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 REDIS_CON = REDIS_HOST, REDIS_PORT
 
 DEBUG = os.getenv("APP_DEBUG", "") in ("1", "True")
+RESULT_AUDIO_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "audio")
 TMP_AUDIO_PATH = tempfile.mkdtemp(suffix="podcast_audio_")
 TMP_IMAGE_PATH = tempfile.mkdtemp(suffix="podcast_images_")
 RESULT_RSS_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "rss")

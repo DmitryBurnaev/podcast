@@ -12,7 +12,15 @@ def get_logger(name: str = None):
     return logging.getLogger(name or "app")
 
 
-def redirect(request, router_name: str, *, permanent=False, url: str = None, reason="HttpFound", **kwargs):
+def redirect(
+    request,
+    router_name: str,
+    *,
+    permanent=False,
+    url: str = None,
+    reason="HttpFound",
+    **kwargs
+):
     """ Redirect to given URL name
 
     :param request: current request for web app
