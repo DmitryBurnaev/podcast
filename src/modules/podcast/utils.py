@@ -44,7 +44,9 @@ def generate_rss(podcast_id: int):
         template = Template(fh.read())
 
     rss_filename = os.path.join(settings.RESULT_RSS_PATH, f"{podcast.publish_id}.xml")
-    logger.info(f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]")
+    logger.info(
+        f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]"
+    )
     with open(rss_filename, "w") as fh:
         result_rss = template.render(podcast=podcast, **context)
         fh.write(result_rss)
@@ -71,12 +73,12 @@ def get_file_name(video_id: str, file_ext: str = settings.RESULT_FILE_EXT) -> st
     return f"{video_id}_{uuid.uuid4().hex}.{file_ext}"
 
 
-def get_file_size(file_name):
+def get_file_size(file_path: str):
     try:
-        full_path = os.path.join(settings.TMP_AUDIO_PATH, file_name)
+        full_path = os.path.join(file_path)
         return os.path.getsize(full_path)
     except FileNotFoundError:
-        logger.info("File %s not found. Return size 0", file_name)
+        logger.info("File %s not found. Return size 0", file_path)
         return 0
 
 
@@ -84,7 +86,9 @@ async def check_state(episodes: Iterable[Episode]) -> list:
     """ Allows to get info about download progress for requested episodes """
 
     redis_client = RedisClient()
-    file_names = {redis_client.get_key_by_filename(episode.file_name) for episode in episodes}
+    file_names = {
+        redis_client.get_key_by_filename(episode.file_name) for episode in episodes
+    }
     current_states = await redis_client.async_get_many(file_names, pkey="event_key")
     result = []
     for episode in episodes:
@@ -133,13 +137,17 @@ def upload_process_hook(filename: str, chunk: int):
     It is called by `s3.upload_file` (`podcast.utils.upload_episode`)
     """
     episode_process_hook(
-        filename=filename,
-        status=EpisodeStatuses.episode_uploading,
-        chunk=chunk
+        filename=filename, status=EpisodeStatuses.episode_uploading, chunk=chunk
     )
 
 
-def episode_process_hook(status: str, filename: str, total_bytes: int = 0, processed_bytes: int = None, chunk: int = 0):
+def episode_process_hook(
+    status: str,
+    filename: str,
+    total_bytes: int = 0,
+    processed_bytes: int = None,
+    chunk: int = 0,
+):
     """ Allows to handle processes of performing episode's file.
     """
     redis_client = RedisClient()
@@ -164,26 +172,33 @@ def episode_process_hook(status: str, filename: str, total_bytes: int = 0, proce
     logger.debug("[%s] for %s: %s", status, filename, progress)
 
 
-def upload_episode(filename: str, remote_directory: str = None) -> Optional[str]:
-    """ Allows to upload src_filename to Yandex.Cloud (aka AWS S3) """
+def upload_episode(filename: str, src_path: str = None) -> Optional[str]:
+    """ Allows to upload src_path to Yandex.Cloud (aka AWS S3) """
 
-    src_filename = os.path.join(settings.TMP_AUDIO_PATH, filename)
-    dst_filename = os.path.join(remote_directory, filename)
+    src_path = src_path or os.path.join(settings.TMP_AUDIO_PATH, filename)
+    dst_path = os.path.join(settings.S3_BUCKET_AUDIO_PATH, filename)
     episode_process_hook(
         filename=filename,
         status=EpisodeStatuses.episode_uploading,
-        processed_bytes=0
+        processed_bytes=0,
+        total_bytes=get_file_size(src_path),
     )
-    logger.info("Upload for %s (target = %s) started.", filename, dst_filename)
+    logger.info("Upload for %s (target = %s) started.", filename, dst_path)
     s3 = StorageS3()
-    result_uploading = s3.upload_file(src_filename, dst_filename, callback=partial(upload_process_hook, filename))
+    result_uploading = s3.upload_file(
+        src_path, dst_path, callback=partial(upload_process_hook, filename)
+    )
     if result_uploading != s3.CODE_OK:
         logger.warning("Couldn't upload file to S3 storage. SKIP")
         episode_process_hook(status=EpisodeStatuses.error, filename=filename)
         return
 
-    result_url = urljoin(settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_filename))
-    logger.info("Great! uploading for %s (%s) was done!", filename, dst_filename)
-    logger.debug("Finished uploading for file %s. \n Result url is %s", dst_filename, result_url)
+    result_url = urljoin(
+        settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_path)
+    )
+    logger.info("Great! uploading for %s (%s) was done!", filename, dst_path)
+    logger.debug(
+        "Finished uploading for file %s. \n Result url is %s", dst_path, result_url
+    )
     logger.debug(result_uploading)
     return result_url

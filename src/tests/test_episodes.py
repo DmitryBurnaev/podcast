@@ -70,7 +70,9 @@ async def test_episodes__create__invalid_request__fail(
     assert response.headers["Location"] == urls.episodes_list
 
 
-async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_youtube, mocked_s3):
+async def test_episodes__create__ok(
+    client, db_objects, podcast, urls, mocked_youtube, mocked_s3
+):
     youtube_link = mocked_youtube.watch_url
     request_data = {"youtube_link": youtube_link}
     response = await client.post(
@@ -163,7 +165,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     episode_data,
     urls,
     mocked_youtube: MockYoutube,
-        mocked_s3,
+    mocked_s3,
 ):
     updated_title = f"Updated title for video {mocked_youtube.video_id}"
     updated_description = f"Updated description for video {mocked_youtube.video_id}"
@@ -218,7 +220,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     episode_data,
     urls,
     mocked_youtube: MockYoutube,
-        mocked_s3,
+    mocked_s3,
 ):
     mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError("Ooops")
 
@@ -286,7 +288,9 @@ async def test_episodes__create__check_for_start_downloading__ok(
     )
 
 
-async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls_tpl, mocked_s3):
+async def test_episodes__delete__ok(
+    client, db_objects, episode_data, urls, urls_tpl, mocked_s3
+):
     podcast_id = episode_data["podcast_id"]
     episode_data["source_id"] = f"source_{time.time_ns()}"
     episode_data["filename"] = f"fn_{time.time_ns()}"
@@ -297,13 +301,17 @@ async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls
     mocked_s3.delete_file.assert_called_with(episode.file_name)
 
     assert response.status == 302
-    assert response.headers["Location"] == urls_tpl.podcasts_details.format(podcast_id=podcast_id)
+    assert response.headers["Location"] == urls_tpl.podcasts_details.format(
+        podcast_id=podcast_id
+    )
 
     with pytest.raises(peewee.DoesNotExist):
         await db_objects.get(Episode, id=episode.id)
 
 
-@pytest.mark.parametrize("same_episode_status, delete_called", [("new", True), ("published", False)])
+@pytest.mark.parametrize(
+    "same_episode_status, delete_called", [("new", True), ("published", False)]
+)
 async def test_episodes__delete__same_episode_exists__ok(
     same_episode_status,
     delete_called,
@@ -331,9 +339,7 @@ async def test_episodes__delete__same_episode_exists__ok(
         {"podcast_id": another_podcast.id, "status": same_episode_status}
     )
     await db_objects.create(Episode, **episode_data)
-    url = urls_tpl.episodes_delete.format(
-        podcast_id=podcast.id, episode_id=episode.id
-    )
+    url = urls_tpl.episodes_delete.format(podcast_id=podcast.id, episode_id=episode.id)
     response = await client.get(url, allow_redirects=False)
     assert mocked_s3.delete_file.called is delete_called
 
@@ -347,7 +353,9 @@ async def test_episodes__delete__same_episode_exists__ok(
     assert response_messages == expected_messages
 
 
-async def test_episodes__download__start_downloading__ok(client, podcast, episode, urls):
+async def test_episodes__download__start_downloading__ok(
+    client, podcast, episode, urls
+):
     with patch("rq.queue.Queue.enqueue") as rq_mock:
         response = await client.get(urls.episodes_download, allow_redirects=False)
         assert response.status == 302

@@ -85,7 +85,9 @@ async def test_podcasts__create__ok(client, db_objects, podcast, urls):
     assert created_podcast.description == "test description"
 
 
-async def test_podcasts__delete__ok(client, db_objects, podcast, podcast_data, episode_data, urls, urls_tpl, mocked_s3):
+async def test_podcasts__delete__ok(
+    client, db_objects, podcast, podcast_data, episode_data, urls, urls_tpl, mocked_s3
+):
     podcast_data["publish_id"] = str(time.time())
     another_podcast: Podcast = await db_objects.create(Podcast, **podcast_data)
 

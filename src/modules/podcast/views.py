@@ -146,7 +146,9 @@ class PodcastDeleteApiView(BasePodcastApiView):
 
     @staticmethod
     async def _delete_files(podcast: Podcast, episodes: List[Episode]):
-        await StorageS3().delete_files_async([episode.file_name for episode in episodes])
+        await StorageS3().delete_files_async(
+            [episode.file_name for episode in episodes]
+        )
         loop = asyncio.get_running_loop()
         rss_file_path = Path(settings.RESULT_RSS_PATH) / f"{podcast.publish_id}.xml"
         await loop.run_in_executor(None, partial(delete_file, rss_file_path))
@@ -434,7 +436,9 @@ class EpisodeCreateApiView(BasePodcastApiView):
         res = self.http_link_regex.sub("[LINK]", value)
         return self.symbols_regex.sub("", res)
 
-    async def _get_episode_data(self, same_episode: Episode, podcast_id: int, video_id: str, youtube_link: str) -> dict:
+    async def _get_episode_data(
+        self, same_episode: Episode, podcast_id: int, video_id: str, youtube_link: str
+    ) -> dict:
         """
         Allows to get information for new episode.
         This info can be given from same episode (episode which has same source_id)
@@ -484,7 +488,8 @@ class EpisodeCreateApiView(BasePodcastApiView):
                 "author": youtube_info.author,
                 "length": youtube_info.length,
                 "file_size": same_episode_data.get("file_size"),
-                "file_name": same_episode_data.get("file_name") or get_file_name(video_id),
+                "file_name": same_episode_data.get("file_name")
+                or get_file_name(video_id),
                 "remote_url": same_episode_data.get("remote_url"),
             }
             message = "Episode was successfully created from the YouTube video."
@@ -531,15 +536,23 @@ class ProgressApiView(web.View):
 
         podcast_items = {
             podcast.id: podcast
-            for podcast in await Podcast.get_all(self.request.app.objects, self.request.user.id)
+            for podcast in await Podcast.get_all(
+                self.request.app.objects, self.request.user.id
+            )
         }
-        episodes = await Episode.get_in_progress(self.request.app.objects, self.request.user.id)
+        episodes = await Episode.get_in_progress(
+            self.request.app.objects, self.request.user.id
+        )
         progress = await check_state(episodes)
         if progress:
             for progress_item in progress:
                 podcast = podcast_items.get(progress_item["podcast_id"])
-                progress_item["podcast_publish_id"] = getattr(podcast, "publish_id", None)
-                progress_item["status_display"] = status_choices.get(progress_item["status"])
+                progress_item["podcast_publish_id"] = getattr(
+                    podcast, "publish_id", None
+                )
+                progress_item["status_display"] = status_choices.get(
+                    progress_item["status"]
+                )
         else:
             progress = []
 
