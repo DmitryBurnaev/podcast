@@ -40,29 +40,33 @@ class StorageS3:
         )
         logger.debug("S3 client %s created", self.s3)
 
-    def __call(self, handler: Callable, *args, **kwargs) -> Tuple[int, Optional[dict]]:
+    def __call(
+        self, handler: Callable, error_log_level=logging.ERROR, **handler_kwargs
+    ) -> Tuple[int, Optional[dict]]:
         try:
             logger.info(
-                "Executing request (%s) to S3 args: %s | kwargs: %s",
+                "Executing request (%s) to S3 kwargs: %s",
                 handler.__name__,
-                args,
-                kwargs,
+                handler_kwargs,
             )
-            response = handler(*args, **kwargs)
+            response = handler(**handler_kwargs)
+
         except botocore.exceptions.ClientError as error:
-            logger.error(
+            logger.log(
+                error_log_level,
                 "Couldn't execute request (%s) to S3: ClientError %s",
                 handler.__name__,
                 error,
             )
             return self.CODE_CLIENT_ERROR, None
+
         except Exception as error:
             logger.exception(
                 "Shit! We couldn't execute %s to S3: %s", handler.__name__, error
             )
             return self.CODE_COMMON_ERROR, None
-        else:
-            return self.CODE_OK, response
+
+        return self.CODE_OK, response
 
     def head_file(
         self, filename: str, remote_path: str = settings.S3_BUCKET_AUDIO_PATH
@@ -78,16 +82,19 @@ class StorageS3:
     ) -> int:
         code, result = self.__call(
             self.s3.upload_file,
-            src_path,
-            settings.S3_BUCKET_NAME,
-            dst_path,
+            Filename=src_path,
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=dst_path,
             Callback=callback,
             ExtraArgs={"ACL": "public-read"},
         )
         return code
 
     def get_file_info(
-        self, filename: str, remote_path: str = settings.S3_BUCKET_AUDIO_PATH
+        self,
+        filename: str,
+        remote_path: str = settings.S3_BUCKET_AUDIO_PATH,
+        error_log_level: int = logging.ERROR,
     ) -> Optional[dict]:
         """
         Allows to find file information (headers) on remote storage (S3)
@@ -95,17 +102,25 @@ class StorageS3:
         """
         dst_path = os.path.join(remote_path, filename)
         code, result = self.__call(
-            self.s3.head_object, Key=dst_path, Bucket=self.BUCKET_NAME
+            self.s3.head_object,
+            error_log_level=error_log_level,
+            Key=dst_path,
+            Bucket=self.BUCKET_NAME,
         )
         return result
 
     def get_file_size(
         self, filename: Optional[str], remote_path: str = settings.S3_BUCKET_AUDIO_PATH
     ) -> int:
-        """ Allows to find file on remote storage (S3) and calculate size (content-length / file size) """
+        """
+        Allows to find file on remote storage (S3) and calculate size
+        (content-length / file size)
+        """
 
         if filename:
-            file_info = self.get_file_info(filename, remote_path)
+            file_info = self.get_file_info(
+                filename, remote_path, error_log_level=logging.WARNING
+            )
             if file_info:
                 return int(
                     file_info["ResponseMetadata"]["HTTPHeaders"]["content-length"]
