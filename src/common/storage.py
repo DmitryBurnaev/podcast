@@ -3,6 +3,7 @@ import logging
 import os
 from functools import partial
 from typing import Callable, List, Optional, Tuple
+from urllib.parse import urljoin
 
 import boto3
 import botocore
@@ -78,8 +79,12 @@ class StorageS3:
         return result
 
     def upload_file(
-        self, src_path: str, dst_path: str, callback: Callable = None
-    ) -> int:
+        self, src_path: str, filename: str, callback: Callable = None,
+        remote_path: str = settings.S3_BUCKET_AUDIO_PATH,
+    ) -> Optional[str]:
+        """ Upload file to S3 storage """
+
+        dst_path = os.path.join(remote_path, filename)
         code, result = self.__call(
             self.s3.upload_file,
             Filename=src_path,
@@ -88,7 +93,14 @@ class StorageS3:
             Callback=callback,
             ExtraArgs={"ACL": "public-read"},
         )
-        return code
+        if code != self.CODE_OK:
+            return None
+
+        result_url = urljoin(
+            settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_path)
+        )
+        logger.info("File %s successful uploaded. Result URL: %s", filename, result_url)
+        return result_url
 
     def get_file_info(
         self,

@@ -26,6 +26,7 @@ class Podcast(BaseModel):
     updated_at = peewee.DateTimeField(default=datetime.utcnow, null=False)
     created_by = peewee.ForeignKeyField(User, related_name="podcasts")
     download_automatically = peewee.BooleanField(default=True)
+    rss_link = peewee.CharField(max_length=128, null=True)
 
     class Meta:
         order_by = ("created_at",)

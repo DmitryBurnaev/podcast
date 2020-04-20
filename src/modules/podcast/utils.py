@@ -4,7 +4,6 @@ import uuid
 from functools import partial
 from pathlib import Path
 from typing import Union, Iterable, Optional
-from urllib.parse import urljoin
 
 from jinja2 import Template
 
@@ -28,7 +27,7 @@ class EpisodeStatuses(str, enum.Enum):
     finished = "finished"
 
 
-def generate_rss(podcast_id: int):
+def generate_rss(podcast_id: int) -> str:
     """ Generate rss for Podcast and Episodes marked as "published" """
 
     logger.info(f"Podcast #{podcast_id}: RSS generation has been started.")
@@ -43,7 +42,7 @@ def generate_rss(podcast_id: int):
     with open(os.path.join(settings.TEMPLATE_PATH, "rss", "feed_template.xml")) as fh:
         template = Template(fh.read())
 
-    rss_filename = os.path.join(settings.RESULT_RSS_PATH, f"{podcast.publish_id}.xml")
+    rss_filename = os.path.join(settings.TMP_RSS_PATH, f"{podcast.publish_id}.xml")
     logger.info(
         f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]"
     )
@@ -52,21 +51,18 @@ def generate_rss(podcast_id: int):
         fh.write(result_rss)
 
     logger.info(f"Podcast #{podcast_id}: RSS generation has been finished.")
+    return rss_filename
 
 
-def delete_file(filename: Union[str, Path]):
+def delete_file(filepath: Union[str, Path]):
     """ Delete local file """
-    if not filename:
-        logger.error("File deleting was skipped")
-        return
 
-    full_path = os.path.join(settings.TMP_AUDIO_PATH, filename)
     try:
-        os.remove(full_path)
+        os.remove(filepath)
     except IOError as error:
-        logger.warning(f"Could not delete file {full_path}: {error}")
+        logger.warning(f"Could not delete file {filepath}: {error}")
     else:
-        logger.info(f"File {full_path} deleted")
+        logger.info(f"File {filepath} deleted")
 
 
 def get_file_name(video_id: str, file_ext: str = settings.RESULT_FILE_EXT) -> str:
@@ -176,29 +172,22 @@ def upload_episode(filename: str, src_path: str = None) -> Optional[str]:
     """ Allows to upload src_path to Yandex.Cloud (aka AWS S3) """
 
     src_path = src_path or os.path.join(settings.TMP_AUDIO_PATH, filename)
-    dst_path = os.path.join(settings.S3_BUCKET_AUDIO_PATH, filename)
     episode_process_hook(
         filename=filename,
         status=EpisodeStatuses.episode_uploading,
         processed_bytes=0,
         total_bytes=get_file_size(src_path),
     )
-    logger.info("Upload for %s (target = %s) started.", filename, dst_path)
-    s3 = StorageS3()
-    result_uploading = s3.upload_file(
-        src_path, dst_path, callback=partial(upload_process_hook, filename)
+    logger.info("Upload for %s started.", filename)
+    storage = StorageS3()
+    result_url = storage.upload_file(
+        src_path, filename, callback=partial(upload_process_hook, filename)
     )
-    if result_uploading != s3.CODE_OK:
+    if result_url:
         logger.warning("Couldn't upload file to S3 storage. SKIP")
         episode_process_hook(status=EpisodeStatuses.error, filename=filename)
         return
 
-    result_url = urljoin(
-        settings.S3_STORAGE_URL, os.path.join(settings.S3_BUCKET_NAME, dst_path)
-    )
-    logger.info("Great! uploading for %s (%s) was done!", filename, dst_path)
-    logger.debug(
-        "Finished uploading for file %s. \n Result url is %s", dst_path, result_url
-    )
-    logger.debug(result_uploading)
+    logger.info("Great! uploading for %s was done!", filename)
+    logger.debug("Finished uploading for file %s. \n Result url is %s", filename, result_url)
     return result_url

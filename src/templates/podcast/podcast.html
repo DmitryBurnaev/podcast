@@ -37,7 +37,7 @@
                 <dt class="col-sm-3">{% trans %}RSS link{% endtrans %}</dt>
                 <dd class="col-sm-9 hide-text-content">
                     <div class="card card-body bg-light text-justify p-0 border-0">
-                        <a href="{{ podcast.publish_id|rss_link }}">{{ podcast.publish_id|rss_link }}</a>
+                        <a href="{{ podcast.rss_link or url('podcast_rss_update', podcast_id=podcast.id) }}" target="_blank">{{ podcast.rss_link or 'Generate RSS' }}</a>
                     </div>
                 </dd>
                 {% endif %}
@@ -115,7 +115,7 @@
                     </div>
                     <div class="form-group mb-0 {% if mobile_app_web_view %}d-block{% else %}d-none d-sm-block{% endif %}">
                         <label for="rss_link" class="col-form-label mb-0 pb-1">{% trans %}RSS link{% endtrans %}:</label>
-                        <input id="rss_link" class="form-control" name="rss_link" disabled type="text" value="{{ podcast.publish_id|rss_link }}"/>
+                        <input id="rss_link" class="form-control" name="rss_link" disabled type="text" value="{{ podcast.rss_link or '' }}"/>
 {#                        <button type="button" class="form-control btn btn-sm btn-outline-secondary no-box-shadow btn-33" id="copyLinkBtn" data-rss-link="{{ podcast.publish_id|rss_link }}">#}
 {#                            {% trans %}Copy Link{% endtrans %}#}
 {#                        </button>#}
