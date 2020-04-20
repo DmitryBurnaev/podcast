@@ -83,7 +83,6 @@ async def create_app() -> PodcastWebApp:
         ],
         filters={
             "datetime_format": jinja_filters.datetime_format,
-            "rss_link": jinja_filters.rss_link,
             "human_length": jinja_filters.human_length,
         },
         extensions=["jinja2.ext.i18n"],

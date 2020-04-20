@@ -1,11 +1,9 @@
 import os
 
 import settings
-from common.models import database
 from common.storage import StorageS3
 from common.utils import get_logger
 from modules.podcast.models import Episode, Podcast
-from modules.podcast.utils import get_file_name
 from modules.youtube.exceptions import YoutubeException
 from modules.youtube import utils as youtube_utils
 from modules.podcast import utils as podcast_utils
@@ -138,7 +136,7 @@ def download_episode(youtube_link: str, episode_id: int):
         episode.source_id, file_size=StorageS3().get_file_size(result_filename)
     )
     _update_all_rss(episode.source_id)
-    podcast_utils.delete_file(result_filename)  # remove tmp file
+    podcast_utils.delete_file(os.path.join(settings.TMP_AUDIO_PATH, result_filename))
     # -----------------------------------
 
     logger.info("=== [%s] DOWNLOADING total finished ===", episode.source_id)
@@ -148,124 +146,26 @@ def download_episode(youtube_link: str, episode_id: int):
 def generate_rss(podcast_id: int):
     """ Allows to download and recreate specific rss (by requested podcast.publish_id) """
 
-    logger.info(f"START rss generation for {podcast_id}")
-    podcast_utils.generate_rss(podcast_id)
+    podcast = Podcast.get_by_id(podcast_id)
+    logger.info("START rss generation for %s", podcast)
+
+    src_file = podcast_utils.generate_rss(podcast_id)
+    filename = os.path.basename(src_file)
+    storage = StorageS3()
+    result_url = storage.upload_file(src_file, filename, remote_path=settings.S3_BUCKET_RSS_PATH)
+    if not result_url:
+        logger.error("Couldn't upload RSS file to storage. SKIP")
+        exit(1)
+
+    podcast.rss_link = result_url
+    podcast.save()
+
+    logger.info("RSS file uploaded, podcast record updated. Removing file [%s]", src_file)
+    podcast_utils.delete_file(filepath=src_file)
     logger.info("FINISH generation")
 
 
-def upload_all():
-    """ TMP: Upload local files to S3 storage """
-
-    episodes = list(
-        Episode.select()
-        .where(Episode.remote_url.is_null())
-        .order_by(Episode.created_at.desc())
-    )
-    for index, episode in enumerate(episodes, start=1):
-        logger.info(
-            "\n\n====== START [%s]  %i from %i ======",
-            episode.source_id,
-            index,
-            len(episodes),
-        )
-        with database.atomic() as transaction:  # Opens new transaction.
-            try:
-                filename = get_file_name(
-                    episode.source_id, file_ext=episode.file_name.split(".")[-1]
-                )
-                src_path = os.path.join(settings.RESULT_AUDIO_PATH, episode.file_name)
-                if not os.path.exists(src_path):
-                    logger.info(
-                        "====== SKIP: file %s does not exist ======", episode.file_name
-                    )
-                    continue
-
-                remote_url = podcast_utils.upload_episode(filename, src_path=src_path)
-                if not remote_url:
-                    raise RuntimeError("=== [%s] UPLOADING was broken === ")
-
-                _update_episode_data(
-                    episode.source_id, {"file_name": filename, "remote_url": remote_url}
-                )
-
-            except Exception as error:
-                transaction.rollback()
-                logger.exception("======= FAILED ====== \n %s", error)
-                exit(1)
-
-        logger.info("=== FINISH [%s] UPLOADING ===", episode.source_id)
-
-    logger.info("\n\n=== START RSS GENERATION ===")
-
-    for podcast in Podcast.select(Podcast.id):
+def regenerate_rss():
+    podcasts = list(Podcast.select())
+    for podcast in podcasts:
         generate_rss(podcast.id)
-
-    logger.info("=== FINISH RSS GENERATION ===")
-
-
-def delete_files():
-    """ TMP: Remove local files which was uploaded to S3 storage """
-
-    episodes = list(
-        Episode.select()
-        .where(Episode.remote_url.contains("http"))
-        .order_by(Episode.created_at.desc())
-    )
-    if not episodes:
-        logger.info(" ==== Not found episodes with 'remote_url' === ")
-        return
-
-    storage = StorageS3()
-    for index, episode in enumerate(episodes, start=1):
-        logger.info(
-            "\n\n====== [%s] START %i from %i ======",
-            episode.source_id,
-            index,
-            len(episodes),
-        )
-        try:
-            file_ext = episode.file_name.split(".")[-1]
-            src_path = os.path.join(
-                settings.RESULT_AUDIO_PATH, f"{episode.source_id}_sound.{file_ext}"
-            )
-            if not os.path.exists(src_path):
-                logger.info(
-                    "====== [%s] SKIP: file %s does not exist ======",
-                    episode.source_id,
-                    src_path,
-                )
-                continue
-
-            remote_size = storage.get_file_size(episode.file_name)
-            local_size = podcast_utils.get_file_size(src_path)
-            if local_size != remote_size:
-                logger.warning(
-                    "====== [%s] SKIP: file %s has another file size %s != %s ======",
-                    episode.source_id,
-                    episode.file_name,
-                    local_size,
-                    remote_size,
-                )
-                continue
-
-            try:
-                os.remove(src_path)
-            except IOError as error:
-                logger.warning(
-                    f"====== [%s] Could not delete file %s: %s",
-                    episode.source_id,
-                    src_path,
-                    error,
-                )
-            else:
-                logger.info(
-                    f"==== [%s] FILE %s deleted ==== ", episode.source_id, src_path
-                )
-
-        except Exception as error:
-            logger.exception(
-                "======= [%s] FAILED ====== \n %s", episode.source_id, error
-            )
-            exit(1)
-
-    logger.info("=== FINISH FILE REMOVING ===\n\n")

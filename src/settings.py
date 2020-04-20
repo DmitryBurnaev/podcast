@@ -32,8 +32,9 @@ REDIS_CON = REDIS_HOST, REDIS_PORT
 
 DEBUG = os.getenv("APP_DEBUG", "") in ("1", "True")
 RESULT_AUDIO_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "audio")
-TMP_AUDIO_PATH = tempfile.mkdtemp(suffix="podcast_audio_")
-TMP_IMAGE_PATH = tempfile.mkdtemp(suffix="podcast_images_")
+TMP_AUDIO_PATH = tempfile.mkdtemp(prefix="podcast_audio__")
+TMP_RSS_PATH = tempfile.mkdtemp(prefix="podcast_rss__")
+TMP_IMAGE_PATH = tempfile.mkdtemp(prefix="podcast_images__")
 RESULT_RSS_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "rss")
 TEMPLATE_PATH = os.path.join(BASE_DIR, "templates")
 STATIC_PATH = os.path.join(PROJECT_ROOT_DIR, "static")
@@ -42,8 +43,9 @@ S3_STORAGE_URL = os.getenv("S3_STORAGE_URL")
 S3_AWS_ACCESS_KEY_ID = os.getenv("S3_AWS_ACCESS_KEY_ID")
 S3_AWS_SECRET_ACCESS_KEY = os.getenv("S3_AWS_SECRET_ACCESS_KEY")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "podcast")
-S3_BUCKET_AUDIO_PATH = os.getenv("S3_BUCKET_AUDIO_PATH", "/audio/")
-S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "/images/")
+S3_BUCKET_AUDIO_PATH = os.getenv("S3_BUCKET_AUDIO_PATH", "audio/")
+S3_BUCKET_RSS_PATH = os.getenv("S3_BUCKET_RSS_PATH", "rss/")
+S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "images/")
 
 RESULT_FILE_EXT = "mp3"
 
