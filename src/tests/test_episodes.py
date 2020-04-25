@@ -298,13 +298,12 @@ async def test_episodes__delete__ok(
 
     url = urls_tpl.episodes_delete.format(podcast_id=podcast_id, episode_id=episode.id)
     response = await client.get(url, allow_redirects=False)
-    mocked_s3.delete_file.assert_called_with(episode.file_name)
+    mocked_s3.delete_files_async_mock.assert_called_with([episode.file_name])
 
     assert response.status == 302
     assert response.headers["Location"] == urls_tpl.podcasts_details.format(
         podcast_id=podcast_id
     )
-
     with pytest.raises(peewee.DoesNotExist):
         await db_objects.get(Episode, id=episode.id)
 
@@ -341,7 +340,7 @@ async def test_episodes__delete__same_episode_exists__ok(
     await db_objects.create(Episode, **episode_data)
     url = urls_tpl.episodes_delete.format(podcast_id=podcast.id, episode_id=episode.id)
     response = await client.get(url, allow_redirects=False)
-    assert mocked_s3.delete_file.called is delete_called
+    assert mocked_s3.delete_files_async_mock.called is delete_called
 
     response_messages = get_session_messages(response)
     expected_messages = [f"Episode for youtube ID {episode.source_id} was removed."]

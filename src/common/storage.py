@@ -79,7 +79,10 @@ class StorageS3:
         return result
 
     def upload_file(
-        self, src_path: str, filename: str, callback: Callable = None,
+        self,
+        src_path: str,
+        filename: str,
+        callback: Callable = None,
         remote_path: str = settings.S3_BUCKET_AUDIO_PATH,
     ) -> Optional[str]:
         """ Upload file to S3 storage """

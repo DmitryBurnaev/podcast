@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import settings
 from common.storage import StorageS3
@@ -30,7 +31,7 @@ def _update_all_rss(source_id: str):
     logger.info(f"Found podcasts for rss updates: %s", podcast_ids)
 
     for podcast_id in podcast_ids:
-        podcast_utils.generate_rss(podcast_id)
+        generate_rss(podcast_id)
 
 
 def _update_episode_data(source_id: str, update_data: dict):
@@ -143,26 +144,33 @@ def download_episode(youtube_link: str, episode_id: int):
     return EPISODE_DOWNLOADING_OK
 
 
-def generate_rss(podcast_id: int):
+def generate_rss(podcast_id: int) -> Optional[str]:
     """ Allows to download and recreate specific rss (by requested podcast.publish_id) """
 
     podcast = Podcast.get_by_id(podcast_id)
     logger.info("START rss generation for %s", podcast)
 
-    src_file = podcast_utils.generate_rss(podcast_id)
+    src_file = podcast_utils.render_rss_to_file(podcast_id)
     filename = os.path.basename(src_file)
     storage = StorageS3()
-    result_url = storage.upload_file(src_file, filename, remote_path=settings.S3_BUCKET_RSS_PATH)
+    result_url = storage.upload_file(
+        src_file, filename, remote_path=settings.S3_BUCKET_RSS_PATH
+    )
     if not result_url:
         logger.error("Couldn't upload RSS file to storage. SKIP")
         exit(1)
 
     podcast.rss_link = result_url
     podcast.save()
+    logger.info("RSS file uploaded, podcast record updated")
 
-    logger.info("RSS file uploaded, podcast record updated. Removing file [%s]", src_file)
-    podcast_utils.delete_file(filepath=src_file)
+    if not settings.TEST_MODE:
+        logger.info("Removing file [%s]", src_file)
+        podcast_utils.delete_file(filepath=src_file)
+        src_file = None
+
     logger.info("FINISH generation")
+    return src_file
 
 
 def regenerate_rss():

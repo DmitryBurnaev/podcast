@@ -27,7 +27,7 @@ class EpisodeStatuses(str, enum.Enum):
     finished = "finished"
 
 
-def generate_rss(podcast_id: int) -> str:
+def render_rss_to_file(podcast_id: int) -> str:
     """ Generate rss for Podcast and Episodes marked as "published" """
 
     logger.info(f"Podcast #{podcast_id}: RSS generation has been started.")
@@ -183,11 +183,13 @@ def upload_episode(filename: str, src_path: str = None) -> Optional[str]:
     result_url = storage.upload_file(
         src_path, filename, callback=partial(upload_process_hook, filename)
     )
-    if result_url:
+    if not result_url:
         logger.warning("Couldn't upload file to S3 storage. SKIP")
         episode_process_hook(status=EpisodeStatuses.error, filename=filename)
         return
 
     logger.info("Great! uploading for %s was done!", filename)
-    logger.debug("Finished uploading for file %s. \n Result url is %s", filename, result_url)
+    logger.debug(
+        "Finished uploading for file %s. \n Result url is %s", filename, result_url
+    )
     return result_url
