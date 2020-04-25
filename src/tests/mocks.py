@@ -56,14 +56,14 @@ class MockS3Client:
     CODE_OK = 0
 
     def __init__(self):
-        self.upload_file = Mock(return_value=self.CODE_OK)
+        self.upload_file = Mock(return_value="http://test.com/uploaded")
         self.delete_file = Mock(return_value=self.CODE_OK)
         self.get_file_size = Mock(return_value=0)
         self.get_file_info = Mock(return_value={})
+        self.delete_files_async_mock = Mock(return_value=self.CODE_OK)
 
     def get_mocks(self):
         return [attr for attr, val in self.__dict__.items() if callable(val)]
 
-    async def delete_files_async(self, filenames, *args, **kwargs):
-        for filename in filenames:
-            return self.delete_file(filename, *args, **kwargs)
+    async def delete_files_async(self, *args, **kwargs):
+        self.delete_files_async_mock(*args, **kwargs)

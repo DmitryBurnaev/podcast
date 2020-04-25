@@ -1,14 +1,10 @@
 import json
-import os
 import time
 from typing import List
-from unittest.mock import patch
 
 import peewee
 import pytest
 from aiohttp import ClientResponse
-
-import settings
 
 from modules.podcast.models import Podcast, Episode
 
@@ -86,24 +82,29 @@ async def test_podcasts__create__ok(client, db_objects, podcast, urls):
 
 
 async def test_podcasts__delete__ok(
-    client, db_objects, podcast, podcast_data, episode_data, urls, urls_tpl, mocked_s3
+    client, db_objects, podcast, podcast_data, episode_data, urls_tpl, mocked_s3
 ):
     podcast_data["publish_id"] = str(time.time())
     another_podcast: Podcast = await db_objects.create(Podcast, **podcast_data)
 
-    episode_data["source_id"] = "test_source_id"
     episode_data["podcast_id"] = another_podcast.id
+    source_id = f"test_source_1_{time.time()}"
+    episode_data["source_id"] = source_id
+    episode_data["file_name"] = f"file_{source_id}"
     episode = await db_objects.create(Episode, **episode_data)
 
-    with patch("os.remove") as mocked_os_remove:
-        url = urls_tpl.podcasts_delete.format(podcast_id=another_podcast.id)
-        response = await client.get(url, allow_redirects=False)
-        mocked_os_remove.assert_called()
-        mocked_os_remove.assert_called_with(
-            os.path.join(settings.RESULT_RSS_PATH, f"{another_podcast.publish_id}.xml")
-        )
-        mocked_s3.delete_file.assert_called_with(episode.file_name)
+    url = urls_tpl.podcasts_delete.format(podcast_id=another_podcast.id)
+    response = await client.get(url, allow_redirects=False)
 
+    expected_call_args = [
+        (([episode.file_name],), {}),
+        (([f"{another_podcast.publish_id}.xml"],), {"remote_path": "rss"}),
+    ]
+    actual_call_args = [
+        (call[0], call[1]) for call in mocked_s3.delete_files_async_mock.call_args_list
+    ]
+
+    assert actual_call_args == expected_call_args
     assert response.status == 302
     assert response.headers["Location"] == urls_tpl.podcasts_list
 
@@ -113,3 +114,45 @@ async def test_podcasts__delete__ok(
 
     podcast = await db_objects.get(Podcast, id=podcast.id)
     assert podcast is not None
+
+
+async def test_podcasts__delete__skip_used_episode_deletion(
+    client, db_objects, podcast_data, episode_data, urls_tpl, mocked_s3
+):
+    podcast_data["publish_id"] = str(time.time())
+    podcast_to_delete: Podcast = await db_objects.create(Podcast, **podcast_data)
+
+    podcast_data["publish_id"] = str(time.time())
+    podcast_2: Podcast = await db_objects.create(Podcast, **podcast_data)
+
+    source_id_1 = f"test_source_1_{time.time()}"
+    source_id_2 = f"test_source_2_{time.time()}"
+
+    episode_data["podcast_id"] = podcast_to_delete.id
+    episode_data["source_id"] = source_id_1
+    episode_data["file_name"] = f"file_{source_id_1}"
+    episode_1 = await db_objects.create(Episode, **episode_data)
+
+    episode_data["source_id"] = source_id_2
+    episode_data["file_name"] = f"file_{source_id_2}"
+    await db_objects.create(Episode, **episode_data)
+
+    episode_data["podcast_id"] = podcast_2.id
+    episode_data["source_id"] = source_id_2
+    episode_data["file_name"] = f"file_{source_id_2}"
+    await db_objects.create(Episode, **episode_data)
+
+    url = urls_tpl.podcasts_delete.format(podcast_id=podcast_to_delete.id)
+    response = await client.get(url, allow_redirects=False)
+
+    expected_call_args = [
+        (([episode_1.file_name],), {}),
+        (([f"{podcast_to_delete.publish_id}.xml"],), {"remote_path": "rss"}),
+    ]
+    actual_call_args = [
+        (call[0], call[1]) for call in mocked_s3.delete_files_async_mock.call_args_list
+    ]
+
+    assert actual_call_args == expected_call_args
+    assert response.status == 302
+    assert response.headers["Location"] == urls_tpl.podcasts_list

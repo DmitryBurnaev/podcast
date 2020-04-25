@@ -18,7 +18,7 @@ from .mocks import MockYoutube, MockS3Client
 
 
 @db_allow_sync
-def test_generate_rss__ok(db_objects, podcast, episode_data):
+def test_generate_rss__ok(db_objects, podcast, episode_data, mocked_s3):
 
     new_episode_data = {
         **episode_data,
@@ -42,10 +42,13 @@ def test_generate_rss__ok(db_objects, podcast, episode_data):
     }
     episode_published: Episode = Episode.create(**new_episode_data)
 
-    generate_rss(podcast.id)
+    rss_path = generate_rss(podcast.id)
 
-    rss_filename = os.path.join(settings.RESULT_RSS_PATH, f"{podcast.publish_id}.xml")
-    with open(rss_filename) as file:
+    mocked_s3.upload_file.assert_called_with(
+        rss_path, f"{podcast.publish_id}.xml", remote_path=settings.S3_BUCKET_RSS_PATH
+    )
+
+    with open(rss_path) as file:
         generated_rss_content = file.read()
 
     assert episode_published.title in generated_rss_content
@@ -55,11 +58,13 @@ def test_generate_rss__ok(db_objects, podcast, episode_data):
     assert episode_new.source_id not in generated_rss_content
     assert episode_downloading.source_id not in generated_rss_content
 
-    os.remove(rss_filename)
+    os.remove(rss_path)
 
 
 @db_allow_sync
+@patch("modules.podcast.tasks.podcast_utils.render_rss_to_file")
 def test_download_sound__episode_downloaded__file_correct__ignore_downloading__ok(
+    generate_rss_mock,
     db_objects,
     podcast,
     episode_data,
@@ -77,8 +82,8 @@ def test_download_sound__episode_downloaded__file_correct__ignore_downloading__o
     }
     episode: Episode = Episode.create(**new_episode_data)
     mocked_s3.get_file_size.return_value = episode.file_size
-    with patch("modules.podcast.tasks.podcast_utils.generate_rss") as generate_rss_mock:
-        result = download_episode(episode.watch_url, episode.id)
+    generate_rss_mock.return_value = f"file_{episode.source_id}.mp3"
+    result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
         updated_episode: Episode = Episode.select().where(
@@ -93,7 +98,7 @@ def test_download_sound__episode_downloaded__file_correct__ignore_downloading__o
 
 
 @db_allow_sync
-@patch("modules.podcast.tasks.podcast_utils.generate_rss")
+@patch("modules.podcast.tasks.podcast_utils.render_rss_to_file")
 @patch("modules.podcast.tasks.youtube_utils.download_audio")
 def test_download_sound__episode_new__correct_downloading(
     download_audio_mock,
@@ -117,6 +122,7 @@ def test_download_sound__episode_new__correct_downloading(
     episode: Episode = Episode.create(**new_episode_data)
 
     download_audio_mock.return_value = episode.file_name
+    generate_rss_mock.return_value = f"file_{episode.source_id}.mp3"
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
@@ -134,7 +140,7 @@ def test_download_sound__episode_new__correct_downloading(
 
 
 @db_allow_sync
-@patch("modules.podcast.tasks.podcast_utils.generate_rss")
+@patch("modules.podcast.tasks.podcast_utils.render_rss_to_file")
 @patch("modules.podcast.tasks.youtube_utils.download_audio")
 def test_download_sound__episode_downloaded__file_incorrect__reload(
     download_audio_mock,
@@ -158,6 +164,7 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
     episode: Episode = Episode.create(**new_episode_data)
 
     download_audio_mock.return_value = episode.file_name
+    generate_rss_mock.return_value = f"file_{episode.source_id}.mp3"
     mocked_s3.get_file_size.return_value = 32
     result = download_episode(episode.watch_url, episode.id)
 

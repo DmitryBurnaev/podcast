@@ -2,7 +2,6 @@ import asyncio
 import re
 from abc import ABC
 from functools import partial
-from pathlib import Path
 from typing import List, Iterable
 
 import aiohttp_jinja2
@@ -144,12 +143,29 @@ class PodcastDeleteApiView(BasePodcastApiView):
     model_class = Podcast
     kwarg_pk = "podcast_id"
 
-    @staticmethod
-    async def _delete_files(podcast: Podcast, episodes: List[Episode]):
+    async def _delete_files(self, podcast: Podcast, episodes: List[Episode]):
+        podcast_file_names = {episode.file_name for episode in episodes}
+        same_file_episodes = await self.request.app.objects.execute(
+            Episode.select().where(
+                Episode.podcast_id != podcast.id,
+                Episode.file_name.in_(podcast_file_names),
+            )
+        )
+        exist_file_names = {episode.file_name for episode in same_file_episodes or []}
+
+        files_to_remove = podcast_file_names - exist_file_names
+        files_to_skip = exist_file_names & podcast_file_names
+        if files_to_skip:
+            self.logger.warning(
+                f"There are another episodes with files %s. Skip this files removing.",
+                files_to_skip,
+            )
+
         storage = StorageS3()
-        rss_file_path = Path(settings.RESULT_RSS_PATH) / f"{podcast.publish_id}.xml"
-        await storage.delete_files_async([episode.file_name for episode in episodes])
-        await storage.delete_files_async([rss_file_path], remote_path=settings.S3_BUCKET_RSS_PATH)
+        await storage.delete_files_async(list(files_to_remove))
+        await storage.delete_files_async(
+            [f"{podcast.publish_id}.xml"], remote_path=settings.S3_BUCKET_RSS_PATH
+        )
 
     @login_required
     async def get(self):
