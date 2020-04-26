@@ -1,8 +1,9 @@
 # Custom Podcasts
-AIOHttp application for creation and moderation your own podcasts with episodes 
+AIOHttp based application for creation and moderation your own podcasts with episodes 
 which are downloaded from other resources (from Youtube for example):
 
-python version: 3.7.4
+![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/DmitryBurnaev/podcast)
+
 ## Content
 + [Project Description](#project-description)
 + [Install Project](#install-project)
