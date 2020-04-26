@@ -12,7 +12,7 @@ if [ "${ENV}" = "web" ]
 
 elif [ "${ENV}" = "rq" ]
   then
-    cd /podcast/src && python -m rq_worker youtube_downloads
+    cd /podcast/src && python -m rq_worker youtube_downloads --user podcast
 else
   echo "ENV environment variable is unexpected or was not provided (ENV='${ENV}')" >&2
   kill -s SIGINT 1
