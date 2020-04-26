@@ -30,9 +30,9 @@ migrations_create:
 	pipenv run python -m src.migrations create
 
 migrations_apply:
-	. ./.env && echo "=========== \n Applying backup to \"$$DATABASE_NAME\" \n=========== \n "
+	. ./.env && echo "=========== \n Applying migrations to \"$$DATABASE_NAME\" \n=========== \n "
 	pipenv run python -m src.migrations apply
-	. ./.env && echo "=========== \n Applying backup to \"$$DATABASE_TEST_NAME\" \n=========== \n "
+	. ./.env && echo "=========== \n Applying migrations to \"$$DATABASE_TEST_NAME\" \n=========== \n "
 	. ./.env && PIPENV_DONT_LOAD_ENV=1 DATABASE_NAME=$$DATABASE_NAME_TEST pipenv run python -m src.migrations apply
 
 migrations_show:
