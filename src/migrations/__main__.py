@@ -18,17 +18,23 @@ import argparse
 
 from common.utils import database_init
 from migrations.models import database
-from migrations.utils import create_migration, run_migrations, show_migration_history
+from migrations.utils import (
+    create_migration,
+    migrations_upgrade,
+    migrations_downgrade,
+    show_migration_history,
+)
 
 operations_map = {
     "create": create_migration,
-    "apply": run_migrations,
+    "upgrade": migrations_upgrade,
+    "downgrade": migrations_downgrade,
     "show": show_migration_history,
 }
 
 
 parser = argparse.ArgumentParser(
-    usage="venv/bin/python -m migrations.run create|apply|show"
+    usage="venv/bin/python -m migrations.run create|upgrade|downgrade|show"
 )
 parser.add_argument(
     "operation",
@@ -37,11 +43,20 @@ parser.add_argument(
     choices=operations_map.keys(),
     help="""
         "create" - create migration module; 
-        "apply" - apply all not applied migrations;  
+        "upgrade" - apply all not applied migrations;  
+        "downgrade" - downgrade applied migrations (all after specified);  
         "show" - print list of applied migrations;
     """,
 )
+parser.add_argument(
+    "--revision",
+    metavar="Migration Number",
+    type=str,
+    default="",
+)
+
 args = parser.parse_args()
 handler = operations_map[args.operation]
 database_init(database)
-handler()
+args = [args.revision] if args.revision else []
+handler(*args)

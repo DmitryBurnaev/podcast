@@ -5,7 +5,7 @@ from typing import List
 
 import pytest
 
-from modules.accounts.models import User
+from modules.auth.models import User
 from .conftest import make_cookie
 
 

@@ -1,6 +1,6 @@
 """ 
 Created_at: 06 Oct. 2019 10:20:50
-Target: Episodes: set nullable `episodes.published_at`
+Target: EPISODES: set nullable `episodes.published_at`
 
 """
 

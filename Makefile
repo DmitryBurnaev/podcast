@@ -29,11 +29,19 @@ locale_compile:
 migrations_create:
 	pipenv run python -m src.migrations create
 
-migrations_apply:
-	. ./.env && echo "=========== \n Applying migrations to \"$$DATABASE_NAME\" \n=========== \n "
-	pipenv run python -m src.migrations apply
-	. ./.env && echo "=========== \n Applying migrations to \"$$DATABASE_TEST_NAME\" \n=========== \n "
-	. ./.env && PIPENV_DONT_LOAD_ENV=1 DATABASE_NAME=$$DATABASE_NAME_TEST pipenv run python -m src.migrations apply
+migrations_upgrade:
+	pipenv run python -m src.migrations upgrade
+
+migrations_upgrade_test:
+	. ./.env && PIPENV_DONT_LOAD_ENV=1 DATABASE_NAME=$$DATABASE_NAME_TEST pipenv run python -m src.migrations upgrade
+
+migrations_downgrade:
+	pipenv run python -m src.migrations downgrade --revision "${revision}"
+	make migrations_show
+
+migrations_downgrade_test:
+	. ./.env && PIPENV_DONT_LOAD_ENV=1 DATABASE_NAME=$$DATABASE_NAME_TEST pipenv run python -m src.migrations downgrade --revision "${revision}"
+	make migrations_show
 
 migrations_show:
 	pipenv run python -m src.migrations show

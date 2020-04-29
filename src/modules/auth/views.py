@@ -8,7 +8,7 @@ from cerberus import Validator
 
 from common.excpetions import NotAuthenticatedError, InvalidParameterError
 from common.views import BaseApiView
-from modules.accounts.models import User
+from modules.auth.models import User, UserInvite
 from common.utils import redirect, add_message, is_mobile_app
 from common.decorators import anonymous_required, login_required, errors_wrapped
 from modules.podcast.models import Podcast
@@ -25,7 +25,7 @@ def _login_and_redirect(request, user, redirect_to="index"):
 class SignInView(BaseApiView):
     """ Simple Login user by username """
 
-    template_name = "accounts/sign_in.html"
+    template_name = "auth/sign_in.html"
     model_class = User
     validator = Validator(
         {
@@ -80,7 +80,7 @@ class SignInView(BaseApiView):
 class SignUpView(BaseApiView):
     """ Create new user in db """
 
-    template_name = "accounts/sign_up.html"
+    template_name = "auth/sign_up.html"
     model_class = User
     validator = Validator(
         {
@@ -136,3 +136,31 @@ class SignOutView(web.View):
         self.request.session.pop("user")
         add_message(self.request, "You are logged out")
         redirect(self.request, "index")
+
+
+class InviteUserView(BaseApiView):
+    """ Remove current user from session """
+
+    model_class = User
+    validator = Validator(
+        {
+            "email": {
+                "type": "string",
+                "required": False,
+                "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
+            },
+        }
+    )
+
+    @login_required
+    async def post(self):
+        cleaned_data = await self._validate()
+        email = cleaned_data["email"]
+        user = await self.request.app.objects.create(
+            UserInvite,  # user=self.user, password=crypt.crypt(password)
+        )
+        self.request.session.pop("user")
+        add_message(self.request, "You are logged out")
+        redirect(self.request, "index")
+
+

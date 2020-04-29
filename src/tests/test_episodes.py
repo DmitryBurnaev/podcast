@@ -9,7 +9,7 @@ import pytest
 from aiohttp import ClientResponse
 
 from modules.podcast.utils import EpisodeStatuses
-from modules.accounts.models import User
+from modules.auth.models import User
 from modules.podcast import tasks
 
 from modules.podcast.models import Podcast, Episode
