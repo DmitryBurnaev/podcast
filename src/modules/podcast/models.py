@@ -30,7 +30,7 @@ class Podcast(BaseModel):
 
     class Meta:
         order_by = ("created_at",)
-        db_table = "podcasts"
+        db_table = "podcast_podcasts"
 
     def __str__(self):
         return f'<Podcast #{self.id} "{self.name}">'
@@ -117,7 +117,7 @@ class Episode(BaseModel):
 
     class Meta:
         order_by = ("-published_at",)
-        db_table = "episodes"
+        db_table = "podcast_episodes"
 
     def __str__(self):
         return f'<Episode #{self.id} {self.source_id} [{self.status}] "{self.title[:10]}..." >'

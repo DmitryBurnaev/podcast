@@ -1,4 +1,6 @@
+import uuid
 from datetime import datetime
+from hashlib import md5
 
 import peewee
 
@@ -22,9 +24,11 @@ class User(BaseModel):
 class UserInvite(BaseModel):
     """ Simple model for save users in DB """
 
+    TOKEN_MAX_LENGTH = 32
+
     user = peewee.ForeignKeyField(User, null=True, unique=True, on_delete="SET NULL")
     email = peewee.CharField(max_length=32, null=True)
-    token = peewee.CharField(unique=True, index=True, max_length=32, null=False)
+    token = peewee.CharField(unique=True, index=True, max_length=TOKEN_MAX_LENGTH, null=False)
     is_applied = peewee.BooleanField(default=False, null=False)
     expired_at = peewee.DateTimeField(null=False)
     created_at = peewee.DateTimeField(default=datetime.utcnow, null=False)
@@ -35,3 +39,7 @@ class UserInvite(BaseModel):
 
     class Meta:
         db_table = "auth_invites"
+
+    @classmethod
+    def generate_token(cls):
+        return md5(uuid.uuid4().hex.encode("utf-8")).hexdigest()

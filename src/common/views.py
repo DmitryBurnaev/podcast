@@ -1,7 +1,9 @@
 import copy
+import datetime
 import json
 from json import JSONDecodeError
 from logging import Logger
+from typing import List
 
 from aiohttp import web
 
@@ -52,6 +54,7 @@ class BaseApiView(web.View):
             request_data = await self.request.post()
 
         if content_type == "application/json":
+            request_data = await self.request.content.read()
             try:
                 request_data = json.loads(request_data)
             except JSONDecodeError as ex:
@@ -97,3 +100,19 @@ class BaseApiView(web.View):
 
         self.logger.info(f"Data was validated and normalized: {logger_data}")
         return cleaned_data
+
+    @staticmethod
+    def model_to_dict(instance, fields: List[str] = None, exclude: List[str] = None):
+        exclude = exclude or []
+        field_names = fields or list(instance.__class__._meta.sorted_field_names)
+        res = {}
+        for field in filter(lambda x: x not in exclude, field_names):
+            value = getattr(instance, field)
+            if isinstance(value, datetime.datetime):
+                value = value.isoformat()
+            elif isinstance(value, BaseModel):
+                value = value.id
+
+            res[field] = value
+
+        return res
