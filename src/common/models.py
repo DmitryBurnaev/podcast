@@ -12,6 +12,7 @@ class BaseModel(peewee.Model):
 
     class Meta:
         database = database
+        db_table = NotImplemented
 
     def to_dict(self, field_names: List[str]):
         field_names = field_names or list(self.__class__._meta.sorted_field_names)

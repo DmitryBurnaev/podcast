@@ -7,7 +7,7 @@ from datetime import datetime
 import peewee_async
 
 from app_i18n import aiohttp_translations
-from modules.accounts.models import User
+from modules.auth.models import User
 from common.models import BaseModel
 from common.utils import get_logger
 

@@ -14,10 +14,13 @@ def upgrade():
     migrator = PostgresqlMigrator(database)
     try:
         migrate(migrator.rename_table("publications", "episodes"))
-    except:
-        pass
+    except Exception as err:
+        print(f"Couldn't rename table publications -> episodes: {err}. SKIP")
 
 
 def downgrade():
     migrator = PostgresqlMigrator(database)
-    migrator.rename_table("episodes", "publications")
+    try:
+        migrate(migrator.rename_table("publications", "episodes"))
+    except Exception as err:
+        print(f"Couldn't rename table episodes -> publications: {err}. SKIP")

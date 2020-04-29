@@ -1,6 +1,6 @@
 from aiohttp_session import get_session
 
-from modules.accounts.models import User
+from modules.auth.models import User
 
 
 async def request_user_middleware(app, handler):

@@ -9,12 +9,13 @@ import peewee
 
 from common.models import database, BaseModel
 from common.utils import database_init
+from migrations.utils import create_tables, remove_tables
 
 previous = "0000"
 
 
 class User(BaseModel):
-    """ Migration version for model `modules.accounts.models.User` """
+    """ Migration version for model `modules.auth.models.User` """
 
     username = peewee.CharField(unique=True, index=True, max_length=10, null=False)
     password = peewee.CharField(max_length=256, null=False)
@@ -63,16 +64,14 @@ class Publication(BaseModel):
         db_table = "publications"  # old version of table name
 
 
-models = (User, Podcast, Publication)
+models: [User, Podcast, Publication]
 
 
 def upgrade():
     database_init(database)
-    for model in models:
-        model.create_table()
+    create_tables(models)
 
 
 def downgrade():
     database_init(database)
-    for model in models:
-        model.drop_table()
+    remove_tables(models)

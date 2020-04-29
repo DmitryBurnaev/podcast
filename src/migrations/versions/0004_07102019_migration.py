@@ -24,4 +24,7 @@ def upgrade():
 
 def downgrade():
     migrator = PostgresqlMigrator(database)
-    migrate(migrator.drop_index("episodes", "episodes_source_id_podcast_id"),)
+    try:
+        migrate(migrator.drop_index("episodes", "episodes_source_id_podcast_id"),)
+    except Exception as err:
+        print(f"Couldn't delete index 'episodes_source_id_podcast_id': {err}")

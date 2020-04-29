@@ -4,9 +4,10 @@ import os
 import re
 import pprint
 from types import ModuleType
-from typing import Dict, Callable
+from typing import Dict, Callable, List, Type
 
 import settings
+from common.models import BaseModel
 from migrations.models import MigrationHistory, database
 
 
@@ -75,7 +76,7 @@ def _get_migration_module(module_name: str) -> MigrationModuleType:
         raise RuntimeError(f"Not found migration module for {module_name}")
 
 
-def _inspect_modules() -> Dict[str, str]:
+def _inspect_modules(reverse=False) -> Dict[str, str]:
     """ Returns map for found migrations scripts (linked via `previous` attribute) """
 
     migrations_map = {}
@@ -86,35 +87,78 @@ def _inspect_modules() -> Dict[str, str]:
             migration_module = _get_migration_module(module_name)
             migrations_map[migration_module.previous or ZERO_MIGRATION] = module_name
 
+    if reverse:
+        migrations_map = {val: key for key, val in migrations_map.items()}
+
     print("--- Prepared migration chains: ---")
     pprint.pprint(migrations_map, indent=4)
     print("---")
     return migrations_map
 
 
-def run_migrations() -> None:
+def create_tables(models: List[Type[BaseModel]]):
+    for model in models:
+        print(f"Creation table for {model}")
+        model.create_table()
+
+
+def remove_tables(models: List[Type[BaseModel]]):
+    for model in models:
+        print(f"Remove table for {model}")
+        model.drop_table()
+
+
+def migrations_upgrade() -> None:
     """ Finds not applied migrations; detect exists migration's modules and apply it. """
+    print(f"=========== \n Applying migrations for {os.getenv('DATABASE_NAME')} \n=========== \n ")
 
     migrations_map = _inspect_modules()
     last_applied = _get_last_applied()
     applied_count = 0
     next_migration_name = migrations_map.get(last_applied)
     while next_migration_name is not None:
-        print(f"Applying migration '{next_migration_name}'...")
+        print(f"Applying '{next_migration_name}'...")
         migration_module = _get_migration_module(next_migration_name)
         with database.transaction():
             migration_module.upgrade()
-        MigrationHistory.create(
-            migration_name=next_migration_name,
-            migration_details=(migration_module.__doc__ or "")
-            .strip()
-            .replace("\n", ". "),
-        )
+            MigrationHistory.create(
+                migration_name=next_migration_name,
+                migration_details=(migration_module.__doc__ or "")
+                .strip()
+                .replace("\n", ". "),
+            )
         next_migration_name = migrations_map.get(next_migration_name)
         applied_count += 1
 
     if not applied_count:
         print("No migrations to apply.")
+
+
+def migrations_downgrade(migration_number: str) -> None:
+    """ Finds not applied migrations; detect exists migration's modules and apply it. """
+    db_name = os.getenv('DATABASE_NAME')
+    print(f"=========== \n Rolling back migrations for {db_name} \n=========== \n ")
+
+    migrations_map = _inspect_modules(reverse=True)
+    last_applied = _get_last_applied()
+    applied_count = 0
+    next_migration_name = last_applied
+    print(next_migration_name)
+    while not next_migration_name.startswith(migration_number):
+        print(f"Rolling back '{next_migration_name}'...")
+        migration_module = _get_migration_module(next_migration_name)
+        with database.transaction():
+            migration_module.downgrade()
+            query = MigrationHistory.delete().where(
+                MigrationHistory.migration_name == next_migration_name
+            )
+            query.execute()
+
+        next_migration_name = migrations_map.get(next_migration_name)
+        applied_count += 1
+
+    if not applied_count:
+        print("No migrations to rollback.")
 
 
 def create_migration():

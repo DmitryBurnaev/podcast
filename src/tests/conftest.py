@@ -17,7 +17,7 @@ from common.models import database
 from common.redis import RedisClient
 from common.storage import StorageS3
 from common.utils import database_init
-from modules.accounts.models import User
+from modules.auth.models import User
 from modules.podcast.models import Podcast, Episode
 from modules.youtube import utils as youtube_utils
 from .mocks import MockYoutube, MockRedisClient, MockS3Client
