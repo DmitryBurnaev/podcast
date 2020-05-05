@@ -47,6 +47,10 @@ S3_BUCKET_AUDIO_PATH = os.getenv("S3_BUCKET_AUDIO_PATH", "audio/")
 S3_BUCKET_RSS_PATH = os.getenv("S3_BUCKET_RSS_PATH", "rss/")
 S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "images/")
 
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_API_VERSION = "v3"
+EMAIL_FROM = os.getenv("EMAIL_FROM")
+
 RESULT_FILE_EXT = "mp3"
 
 LOCALES_PATH = os.path.join(BASE_DIR, "i18n")
@@ -60,7 +64,7 @@ os.makedirs(STATIC_PATH, exist_ok=True)
 
 MEDIA_URL = "/media/audio/"
 STATIC_URL = "/static/"
-SITE_URL = os.getenv("SITE_URL", "http://podcast.site.com/")
+SITE_URL = os.getenv("SITE_URL", "https://podcast.site.com/")
 
 DOWNLOAD_EVENT_REDIS_TTL = 60 * 60  # 60 minutes
 RQ_DEFAULT_TIMEOUT = 24 * 3600  # 24 hours

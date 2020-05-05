@@ -7,6 +7,7 @@
     <input type="text" name="username" id="username" class="form-control" placeholder="{% trans %}Username{% endtrans %}" required="" autofocus="">
     <label for="inputPassword" class="sr-only">{% trans %}Password{% endtrans %}</label>
     <input type="password" name="password" id="inputPassword" class="form-control" placeholder="{% trans %}Password{% endtrans %}" required="">
+    <input type="hidden" name="token" id="inviteToken" class="form-control" value="{{ token }}">
     <button class="btn btn-lg btn-info btn-block" type="submit">{% trans %}Sign Up{% endtrans %}</button>
     or <a href="{{ url('sign_in') }}" >{% trans %}sign-in{% endtrans %}</a>
     <p class="mt-5 mb-3 text-muted">© 2019</p>

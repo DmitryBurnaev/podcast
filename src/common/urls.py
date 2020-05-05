@@ -4,6 +4,7 @@ from typing import Type
 from aiohttp import web
 
 
+# noinspection PyPep8Naming
 @dataclass(init=True, repr=True)
 class url:
     path: str

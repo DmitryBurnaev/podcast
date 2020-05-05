@@ -21,10 +21,10 @@ msgstr ""
 
 #: src/modules/podcast/models.py:62
 msgid ""
-"Add new episode -> press \"download\" -> copy podcast RSS-link -> past "
+"Add new episode -> wait for downloading-> copy podcast RSS-link -> past "
 "this link to your podcast application -> enjoy"
 msgstr ""
-"Добавьте новый эпизод -> нажимте \"Загрузить\" -> скопируйте RSS ссылку "
+"Добавьте новый эпизод -> дождитесь загрузки -> скопируйте RSS ссылку "
 "-> вставьте ее в ваше приложение"
 
 #: src/modules/podcast/models.py:70

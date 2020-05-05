@@ -5,19 +5,23 @@ from datetime import datetime, timedelta
 from time import time
 
 import aiohttp_jinja2
+import peewee
 from aiohttp import web
 from cerberus import Validator
 
-from common.excpetions import InvalidParameterError
+import settings
+from app_i18n import aiohttp_translations
+from common.excpetions import InvalidParameterError, InviteTokenInvalidationError
 from common.views import BaseApiView
 from modules.auth.models import User, UserInvite
-from common.utils import redirect, add_message, is_mobile_app
-from common.decorators import anonymous_required, login_required, errors_wrapped
+from common.utils import redirect, add_message, is_mobile_app, send_email
+from common.decorators import anonymous_required, login_required, errors_wrapped, \
+    errors_api_wrapped, json_response
 from modules.podcast.models import Podcast
 
 
 logger = logging.getLogger(__name__)
-
+_ = aiohttp_translations.gettext
 
 def _login_and_redirect(request, user, redirect_to="index"):
     request.session["user"] = str(user.id)
@@ -103,13 +107,20 @@ class SignUpView(BaseApiView):
                 "required": True,
                 "regex": "^\w+$",
             },
+            "token": {
+                "type": "string",
+                "minlength": 32,
+                "maxlength": 32,
+                "required": True,
+            },
         }
     )
 
     @anonymous_required
     @aiohttp_jinja2.template(template_name)
     async def get(self):
-        return {}
+        token = self.request.query.get("invite", "")
+        return {"token": token[:32]}
 
     @anonymous_required
     @errors_wrapped
@@ -118,16 +129,29 @@ class SignUpView(BaseApiView):
         cleaned_data = await self._validate()
         username = cleaned_data["username"]
         password = cleaned_data["password"]
+        invite_token = cleaned_data["token"]
+        try:
+            user_invite: UserInvite = await self.request.app.objects.get(
+                UserInvite.select().where(
+                    UserInvite.token == invite_token,
+                    UserInvite.is_applied == False,
+                    UserInvite.expired_at > datetime.utcnow()
+                )
+            )
+        except peewee.DoesNotExist as err:
+            logger.exception("Couldn't invite user: %s", err)
+            raise InviteTokenInvalidationError(details=str(err))
 
-        if await self.request.app.objects.count(
-            User.select().where(User.username ** username)
-        ):
+        if await self.request.app.objects.count(User.select().where(User.username ** username)):
             add_message(self.request, f"{username} already exists", kind="danger")
             redirect(self.request, "sign_up")
 
         user = await self.request.app.objects.create(
             User, username=username, password=crypt.crypt(password)
         )
+        user_invite.user = user
+        user_invite.is_applied = True
+        await self.request.app.objects.update(user_invite)
         await Podcast.create_first_podcast(self.request.app.objects, user.id)
 
         _login_and_redirect(self.request, user, redirect_to="default_podcast_details")
@@ -158,8 +182,9 @@ class InviteUserView(BaseApiView):
     )
     INVITE_EXPIRED_DAYS = 30
 
+    @json_response
     @login_required
-    @errors_wrapped
+    @errors_api_wrapped
     async def post(self):
         cleaned_data = await self._validate()
         email = cleaned_data["email"]
@@ -171,5 +196,19 @@ class InviteUserView(BaseApiView):
         user_invite: UserInvite = await self.request.app.objects.create(
             UserInvite, created_by=self.user, email=email, token=token, expired_at=expired_at
         )
-        resp_data = self.model_to_dict(user_invite)
-        return web.json_response(resp_data, status=http.HTTPStatus.CREATED)
+        await self._send_email(user_invite)
+        return self.model_to_dict(user_invite), http.HTTPStatus.CREATED
+
+    @staticmethod
+    async def _send_email(user_invite: UserInvite):
+        link = f"{settings.SITE_URL}/sign-up/?invite={user_invite.token}"
+        body = f"""
+            <p>Hello! :) You have been invited to {settings.SITE_URL}</p>
+            <p>Please follow the link </p>
+            <p><a href={link}>{link}</a></p> 
+        """
+        await send_email(
+            recipient_email=user_invite.email,
+            subject="Welcome to podcast.devpython.ru",
+            html_content=body
+        )
