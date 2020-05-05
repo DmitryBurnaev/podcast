@@ -20,12 +20,8 @@ def run_worker():
     database_init(database)
 
     if settings.SENTRY_DSN:
-        sentry_logging = LoggingIntegration(
-            level=logging.INFO, event_level=logging.ERROR
-        )
-        sentry_sdk.init(
-            settings.SENTRY_DSN, integrations=[RqIntegration(), sentry_logging]
-        )
+        sentry_logging = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        sentry_sdk.init(settings.SENTRY_DSN, integrations=[RqIntegration(), sentry_logging])
 
     with Connection(Redis(*settings.REDIS_CON)):
         qs = sys.argv[1:] or ["default"]

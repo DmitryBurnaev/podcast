@@ -1,8 +1,9 @@
 import http
 import logging
 import crypt
-from datetime import datetime, timedelta
 from time import time
+from datetime import datetime, timedelta
+from hmac import compare_digest as compare_hash
 
 import aiohttp_jinja2
 import peewee
@@ -11,17 +12,27 @@ from cerberus import Validator
 
 import settings
 from app_i18n import aiohttp_translations
-from common.excpetions import InvalidParameterError, InviteTokenInvalidationError
+from common.excpetions import (
+    InvalidParameterError,
+    InviteTokenInvalidationError,
+    NotAuthenticatedError,
+)
 from common.views import BaseApiView
 from modules.auth.models import User, UserInvite
 from common.utils import redirect, add_message, is_mobile_app, send_email
-from common.decorators import anonymous_required, login_required, errors_wrapped, \
-    errors_api_wrapped, json_response
+from common.decorators import (
+    anonymous_required,
+    login_required,
+    errors_wrapped,
+    errors_api_wrapped,
+    json_response,
+)
 from modules.podcast.models import Podcast
 
 
 logger = logging.getLogger(__name__)
 _ = aiohttp_translations.gettext
+
 
 def _login_and_redirect(request, user, redirect_to="index"):
     request.session["user"] = str(user.id)
@@ -38,18 +49,8 @@ class SignInView(BaseApiView):
     model_class = User
     validator = Validator(
         {
-            "username": {
-                "type": "string",
-                "minlength": 1,
-                "maxlength": 10,
-                "required": True,
-            },
-            "password": {
-                "type": "string",
-                "minlength": 1,
-                "maxlength": 32,
-                "required": True,
-            },
+            "username": {"type": "string", "minlength": 1, "maxlength": 10, "required": True},
+            "password": {"type": "string", "minlength": 1, "maxlength": 32, "required": True},
         }
     )
 
@@ -67,9 +68,7 @@ class SignInView(BaseApiView):
         password = cleaned_data["password"]
 
         if not username:
-            add_message(
-                self.request, f"Provide both username and password", kind="warning"
-            )
+            add_message(self.request, f"Provide both username and password", kind="warning")
             redirect(self.request, "sign_in")
         try:
             user = await self.authenticate(username, password)
@@ -81,8 +80,8 @@ class SignInView(BaseApiView):
 
     async def authenticate(self, username, password):
         user = await self.request.app.objects.get(User, User.username == username)
-        # if not compare_hash(user.password, crypt.crypt(password, user.password)):
-        #     raise NotAuthenticatedError
+        if not compare_hash(user.password, crypt.crypt(password, user.password)):
+            raise NotAuthenticatedError
         return user
 
 
@@ -107,12 +106,7 @@ class SignUpView(BaseApiView):
                 "required": True,
                 "regex": "^\w+$",
             },
-            "token": {
-                "type": "string",
-                "minlength": 32,
-                "maxlength": 32,
-                "required": True,
-            },
+            "token": {"type": "string", "minlength": 32, "maxlength": 32, "required": True},
         }
     )
 
@@ -134,8 +128,8 @@ class SignUpView(BaseApiView):
             user_invite: UserInvite = await self.request.app.objects.get(
                 UserInvite.select().where(
                     UserInvite.token == invite_token,
-                    UserInvite.is_applied == False,
-                    UserInvite.expired_at > datetime.utcnow()
+                    UserInvite.is_applied == False,  # noqa
+                    UserInvite.expired_at > datetime.utcnow(),
                 )
             )
         except peewee.DoesNotExist as err:
@@ -190,9 +184,7 @@ class InviteUserView(BaseApiView):
         email = cleaned_data["email"]
         token = UserInvite.generate_token()
         expired_at = datetime.utcnow() + timedelta(days=self.INVITE_EXPIRED_DAYS)
-        logger.info(
-            "INVITE: create for %s (expired %s) token [%s]", email, expired_at, token
-        )
+        logger.info("INVITE: create for %s (expired %s) token [%s]", email, expired_at, token)
         user_invite: UserInvite = await self.request.app.objects.create(
             UserInvite, created_by=self.user, email=email, token=token, expired_at=expired_at
         )
@@ -205,10 +197,10 @@ class InviteUserView(BaseApiView):
         body = f"""
             <p>Hello! :) You have been invited to {settings.SITE_URL}</p>
             <p>Please follow the link </p>
-            <p><a href={link}>{link}</a></p> 
+            <p><a href={link}>{link}</a></p>
         """
         await send_email(
             recipient_email=user_invite.email,
             subject="Welcome to podcast.devpython.ru",
-            html_content=body
+            html_content=body,
         )

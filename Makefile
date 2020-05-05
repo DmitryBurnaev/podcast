@@ -50,5 +50,5 @@ test:
 	PYTHONPATH=${PWD}/src pipenv run pytest src/tests --aiohttp-fast --aiohttp-loop=uvloop --disable-warnings
 
 lint:
-	pipenv run black . --exclude migrations
+	pipenv run black . --exclude migrations --line-length 100
 	pipenv run flake8

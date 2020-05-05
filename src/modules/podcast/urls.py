@@ -12,26 +12,14 @@ urls = (
         views.DefaultPodcastRetrieveUpdateApiView,
         name="default_podcast_details",
     ),
-    url(
-        "/podcasts/{podcast_id}/",
-        views.PodcastRetrieveUpdateApiView,
-        name="podcast_details",
-    ),
-    url(
-        "/podcasts/{podcast_id}/delete/",
-        views.PodcastDeleteApiView,
-        name="podcast_delete",
-    ),
+    url("/podcasts/{podcast_id}/", views.PodcastRetrieveUpdateApiView, name="podcast_details",),
+    url("/podcasts/{podcast_id}/delete/", views.PodcastDeleteApiView, name="podcast_delete",),
     url(
         "/podcasts/{podcast_id}/rss-update/",
         views.PodcastUpdateRSSApiView,
         name="podcast_rss_update",
     ),
-    url(
-        "/podcasts/{podcast_id}/episodes/",
-        views.EpisodeCreateApiView,
-        name="episode_create",
-    ),
+    url("/podcasts/{podcast_id}/episodes/", views.EpisodeCreateApiView, name="episode_create",),
     url(
         "/podcasts/{podcast_id}/episodes/{episode_id}/",
         views.EpisodeRetrieveUpdateApiView,

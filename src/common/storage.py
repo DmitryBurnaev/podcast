@@ -36,9 +36,7 @@ class StorageS3:
             region_name="ru-central1",
         )
         logger.debug("Boto3 (s3) Session <%s> created", session)
-        self.s3 = session.client(
-            service_name="s3", endpoint_url=settings.S3_STORAGE_URL
-        )
+        self.s3 = session.client(service_name="s3", endpoint_url=settings.S3_STORAGE_URL)
         logger.debug("S3 client %s created", self.s3)
 
     def __call(
@@ -46,9 +44,7 @@ class StorageS3:
     ) -> Tuple[int, Optional[dict]]:
         try:
             logger.info(
-                "Executing request (%s) to S3 kwargs: %s",
-                handler.__name__,
-                handler_kwargs,
+                "Executing request (%s) to S3 kwargs: %s", handler.__name__, handler_kwargs,
             )
             response = handler(**handler_kwargs)
 
@@ -62,9 +58,7 @@ class StorageS3:
             return self.CODE_CLIENT_ERROR, None
 
         except Exception as error:
-            logger.exception(
-                "Shit! We couldn't execute %s to S3: %s", handler.__name__, error
-            )
+            logger.exception("Shit! We couldn't execute %s to S3: %s", handler.__name__, error)
             return self.CODE_COMMON_ERROR, None
 
         return self.CODE_OK, response
@@ -73,9 +67,7 @@ class StorageS3:
         self, filename: str, remote_path: str = settings.S3_BUCKET_AUDIO_PATH
     ) -> Optional[dict]:
         dst_path = os.path.join(remote_path, filename)
-        code, result = self.__call(
-            self.s3.head_object, Key=dst_path, Bucket=self.BUCKET_NAME
-        )
+        code, result = self.__call(self.s3.head_object, Key=dst_path, Bucket=self.BUCKET_NAME)
         return result
 
     def upload_file(
@@ -133,24 +125,16 @@ class StorageS3:
         """
 
         if filename:
-            file_info = self.get_file_info(
-                filename, remote_path, error_log_level=logging.WARNING
-            )
+            file_info = self.get_file_info(filename, remote_path, error_log_level=logging.WARNING)
             if file_info:
-                return int(
-                    file_info["ResponseMetadata"]["HTTPHeaders"]["content-length"]
-                )
+                return int(file_info["ResponseMetadata"]["HTTPHeaders"]["content-length"])
 
         logger.info("File %s was not found on s3 storage", filename)
         return 0
 
-    def delete_file(
-        self, filename: str, remote_path: str = settings.S3_BUCKET_AUDIO_PATH
-    ):
+    def delete_file(self, filename: str, remote_path: str = settings.S3_BUCKET_AUDIO_PATH):
         dst_path = os.path.join(remote_path, filename)
-        code, result = self.__call(
-            self.s3.delete_object, Key=dst_path, Bucket=self.BUCKET_NAME
-        )
+        code, result = self.__call(self.s3.delete_object, Key=dst_path, Bucket=self.BUCKET_NAME)
         return result
 
     async def delete_files_async(
@@ -161,10 +145,5 @@ class StorageS3:
             dst_path = os.path.join(remote_path, filename)
             await loop.run_in_executor(
                 None,
-                partial(
-                    self.__call,
-                    self.s3.delete_object,
-                    Key=dst_path,
-                    Bucket=self.BUCKET_NAME,
-                ),
+                partial(self.__call, self.s3.delete_object, Key=dst_path, Bucket=self.BUCKET_NAME,),
             )

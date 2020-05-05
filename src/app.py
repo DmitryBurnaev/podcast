@@ -50,9 +50,7 @@ async def shutdown_app(app):
 async def create_app() -> PodcastWebApp:
     """ Prepare application """
     redis_pool = await aioredis.create_pool(settings.REDIS_CON)
-    session_engine = (
-        SimpleCookieStorage() if settings.TEST_MODE else RedisStorage(redis_pool)
-    )
+    session_engine = SimpleCookieStorage() if settings.TEST_MODE else RedisStorage(redis_pool)
     middlewares = [
         session_middleware(session_engine),
         request_user_middleware,
@@ -108,12 +106,8 @@ async def create_app() -> PodcastWebApp:
     )
 
     if settings.SENTRY_DSN:
-        sentry_logging = LoggingIntegration(
-            level=logging.INFO, event_level=logging.ERROR
-        )
-        sentry_sdk.init(
-            settings.SENTRY_DSN, integrations=[AioHttpIntegration(), sentry_logging]
-        )
+        sentry_logging = LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        sentry_sdk.init(settings.SENTRY_DSN, integrations=[AioHttpIntegration(), sentry_logging])
 
     return app
 

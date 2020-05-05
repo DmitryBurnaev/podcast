@@ -86,9 +86,7 @@ def test_download_sound__episode_downloaded__file_correct__ignore_downloading__o
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(
-            Episode.id == episode.id
-        ).first()
+        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     assert result == EPISODE_DOWNLOADING_IGNORED
@@ -126,9 +124,7 @@ def test_download_sound__episode_new__correct_downloading(
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(
-            Episode.id == episode.id
-        ).first()
+        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url, episode.file_name)
@@ -169,9 +165,7 @@ def test_download_sound__episode_downloaded__file_incorrect__reload(
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(
-            Episode.id == episode.id
-        ).first()
+        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
 
     generate_rss_mock.assert_called_with(episode.podcast_id)
     download_audio_mock.assert_called_with(episode.watch_url, episode.file_name)
@@ -207,9 +201,7 @@ def test_download_sound__youtube_exception__download_rollback(
     result = download_episode(episode.watch_url, episode.id)
 
     with db_objects.allow_sync():
-        updated_episode: Episode = Episode.select().where(
-            Episode.id == episode.id
-        ).first()
+        updated_episode: Episode = Episode.select().where(Episode.id == episode.id).first()
 
     download_audio_mock.assert_called_with(episode.watch_url, episode.file_name)
 

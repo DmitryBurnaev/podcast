@@ -4,7 +4,7 @@ import random
 import time
 import uuid
 from collections import namedtuple
-from typing import Tuple
+from typing import Tuple, List, NamedTuple
 from unittest.mock import Mock
 from hashlib import blake2b
 
@@ -48,9 +48,7 @@ def make_cookie(client, data):
 
 def generate_video_id() -> str:
     """ Generate YouTube-like videoID """
-    return blake2b(
-        key=bytes(str(time.time()), encoding="utf-8"), digest_size=6
-    ).hexdigest()[:11]
+    return blake2b(key=bytes(str(time.time()), encoding="utf-8"), digest_size=6).hexdigest()[:11]
 
 
 def teardown_module(module):
@@ -139,7 +137,7 @@ def episode(db_objects, episode_data):
 @pytest.fixture
 def mocked_youtube(monkeypatch) -> MockYoutube:
     mock_youtube = MockYoutube()
-    monkeypatch.setattr(YoutubeDL, "__new__", lambda *_, **__: mock_youtube)
+    monkeypatch.setattr(YoutubeDL, "__new__", lambda *_, **__: mock_youtube)  # noqa
     yield mock_youtube
     del mock_youtube
 
@@ -147,7 +145,7 @@ def mocked_youtube(monkeypatch) -> MockYoutube:
 @pytest.fixture
 def mocked_redis(monkeypatch) -> MockRedisClient:
     mock_redis_client = MockRedisClient()
-    monkeypatch.setattr(RedisClient, "__new__", lambda *_, **__: mock_redis_client)
+    monkeypatch.setattr(RedisClient, "__new__", lambda *_, **__: mock_redis_client)  # noqa
     yield mock_redis_client
     del mock_redis_client
 
@@ -155,7 +153,7 @@ def mocked_redis(monkeypatch) -> MockRedisClient:
 @pytest.fixture
 def mocked_s3(monkeypatch) -> MockS3Client:
     mock_s3_client = MockS3Client()
-    monkeypatch.setattr(StorageS3, "__new__", lambda *_, **__: mock_s3_client)
+    monkeypatch.setattr(StorageS3, "__new__", lambda *_, **__: mock_s3_client)  # noqa
     yield mock_s3_client
     del mock_s3_client
 
@@ -214,3 +212,30 @@ def urls(urls_tpl: named_urls, podcast, episode) -> named_urls:
         for url_name, url in urls_tpl._asdict().items()
     }
     return named_urls(**urls_dict)
+
+
+class CheckOwnerUrl(NamedTuple):
+    url: str
+    method: str
+    status_code: int = 403
+
+
+@pytest.fixture
+def check_for_owner_urls(urls) -> List[CheckOwnerUrl]:
+    return [
+        CheckOwnerUrl(url=urls.podcasts_details, method="post"),
+        CheckOwnerUrl(url=urls.podcasts_delete, method="get"),
+        CheckOwnerUrl(url=urls.episodes_list, method="get"),
+        CheckOwnerUrl(url=urls.episodes_details, method="post"),
+        CheckOwnerUrl(url=urls.episodes_delete, method="get"),
+    ]
+
+
+@pytest.fixture
+def login_required_urls(urls):
+    return (
+        urls.podcasts_list,
+        urls.podcasts_details,
+        urls.episodes_list,
+        urls.episodes_details,
+    )

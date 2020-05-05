@@ -36,11 +36,7 @@ class AioHttpGettextTranslations(aiohttp_i18n.i18n._GettextTranslations):
         if isinstance(current_locale, str):
             lang = current_locale
         else:
-            lang = (
-                current_locale.language
-                if current_locale
-                else settings.LOCALES_BY_DEFAULT
-            )
+            lang = current_locale.language if current_locale else settings.LOCALES_BY_DEFAULT
 
         if lang not in settings.LOCALES:
             lang = settings.LOCALES_BY_DEFAULT

@@ -110,9 +110,7 @@ def ffmpeg_preparation(filename: str):
         processed_bytes=0,
     )
     tmp_filename = os.path.join(settings.TMP_AUDIO_PATH, f"tmp_{filename}")
-    proc = subprocess.Popen(
-        ["ffmpeg", "-i", src_path, "-strict", "-2", "-y", tmp_filename]
-    )
+    proc = subprocess.Popen(["ffmpeg", "-i", src_path, "-strict", "-2", "-y", tmp_filename])
     outs, errs = proc.communicate(timeout=settings.FFMPEG_TIMEOUT)
     if outs:
         logger.info(outs)

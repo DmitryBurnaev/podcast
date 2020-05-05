@@ -15,13 +15,7 @@ def get_logger(name: str = None):
 
 
 def redirect(
-    request,
-    router_name: str,
-    *,
-    permanent=False,
-    url: str = None,
-    reason="HttpFound",
-    **kwargs
+    request, router_name: str, *, permanent=False, url: str = None, reason="HttpFound", **kwargs
 ):
     """ Redirect to given URL name
 
@@ -84,23 +78,11 @@ async def send_email(recipient_email: str, subject: str, html_content: str):
 
     request_url = f"https://api.sendgrid.com/{settings.SENDGRID_API_VERSION}/mail/send"
     request_data = {
-        "personalizations": [
-            {
-                "to": [{"email": recipient_email}],
-                "subject": subject
-            }
-        ],
+        "personalizations": [{"to": [{"email": recipient_email}], "subject": subject}],
         "from": {"email": settings.EMAIL_FROM},
-        "content": [
-            {
-                "type": "text/html",
-                "value": html_content
-            }
-        ]
+        "content": [{"type": "text/html", "value": html_content}],
     }
-    request_header = {
-        "Authorization": f"Bearer {settings.SENDGRID_API_KEY}"
-    }
+    request_header = {"Authorization": f"Bearer {settings.SENDGRID_API_KEY}"}
     request_logger = get_logger(__name__)
     request_logger.info("Send request to %s. Data: %s", request_url, request_data)
 
@@ -112,7 +94,9 @@ async def send_email(recipient_email: str, subject: str, html_content: str):
                     f"Couldn't send email to {recipient_email}",
                     f"Got status code: {response.status}; response text: {response_text}",
                     response_status=response.status,
-                    request_url=request_url
+                    request_url=request_url,
                 )
             else:
-                request_logger.info("Email sent to %s. Status code: %s", recipient_email, response.status)
+                request_logger.info(
+                    "Email sent to %s. Status code: %s", recipient_email, response.status
+                )

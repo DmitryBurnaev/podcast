@@ -64,10 +64,7 @@ class BaseApiView(web.View):
                         details=f"Invalid Request {request_data}. Exception: {ex}",
                     )
 
-        elif content_type in (
-            "multipart/form-data",
-            "application/x-www-form-urlencoded",
-        ):
+        elif content_type in ("multipart/form-data", "application/x-www-form-urlencoded",):
             res_request_data = {}
             for key in request_data:
                 value = request_data.getall(key)

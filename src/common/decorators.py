@@ -70,8 +70,7 @@ def errors_api_wrapped(func):
             message = getattr(ex, "message", None) or str(ex)
             details = getattr(ex, "details", None)
             logger.exception(
-                "Couldn't perform action: %s. Error: %s, Details: %s",
-                ex, message, details
+                "Couldn't perform action: %s. Error: %s, Details: %s", ex, message, details
             )
             return {"message": message, "details": details}, ex.status_code
 
