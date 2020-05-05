@@ -1,9 +1,11 @@
 import logging
 import logging.config
 
+import aiohttp
 from aiohttp import web
 
 import settings
+from common.excpetions import SendRequestError
 
 
 def get_logger(name: str = None):
@@ -75,3 +77,42 @@ def database_init(db):
         password=settings.DATABASE["password"],
     )
     return db
+
+
+async def send_email(recipient_email: str, subject: str, html_content: str):
+    """ Allows to send email via Sendgrid API """
+
+    request_url = f"https://api.sendgrid.com/{settings.SENDGRID_API_VERSION}/mail/send"
+    request_data = {
+        "personalizations": [
+            {
+                "to": [{"email": recipient_email}],
+                "subject": subject
+            }
+        ],
+        "from": {"email": settings.EMAIL_FROM},
+        "content": [
+            {
+                "type": "text/html",
+                "value": html_content
+            }
+        ]
+    }
+    request_header = {
+        "Authorization": f"Bearer {settings.SENDGRID_API_KEY}"
+    }
+    request_logger = get_logger(__name__)
+    request_logger.info("Send request to %s. Data: %s", request_url, request_data)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(request_url, json=request_data, headers=request_header) as response:
+            if response.status > 299:
+                response_text = await response.text()
+                raise SendRequestError(
+                    f"Couldn't send email to {recipient_email}",
+                    f"Got status code: {response.status}; response text: {response_text}",
+                    response_status=response.status,
+                    request_url=request_url
+                )
+            else:
+                request_logger.info("Email sent to %s. Status code: %s", recipient_email, response.status)

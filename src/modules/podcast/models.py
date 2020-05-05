@@ -61,7 +61,7 @@ class Podcast(BaseModel):
     @classmethod
     async def create_first_podcast(cls, objects, user_id: int):
         description = _(
-            'Add new episode -> press "download" -> copy podcast RSS-link '
+            'Add new episode -> wait for downloading -> copy podcast RSS-link '
             "-> past this link to your podcast application -> enjoy"
         )
         return await objects.create(

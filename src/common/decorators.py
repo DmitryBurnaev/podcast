@@ -58,3 +58,21 @@ def errors_wrapped(func):
             raise web.HTTPFound(self.request.path)
 
     return wrapped
+
+
+def errors_api_wrapped(func):
+    """ Allow only anonymous users """
+
+    async def wrapped(self, *args, **kwargs):
+        try:
+            return await func(self, *args, **kwargs)
+        except BaseApplicationError as ex:
+            message = getattr(ex, "message", None) or str(ex)
+            details = getattr(ex, "details", None)
+            logger.exception(
+                "Couldn't perform action: %s. Error: %s, Details: %s",
+                ex, message, details
+            )
+            return {"message": message, "details": details}, ex.status_code
+
+    return wrapped
