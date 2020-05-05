@@ -35,17 +35,14 @@ def render_rss_to_file(podcast_id: int) -> str:
 
     # noinspection PyComparisonWithNone
     episodes = podcast.get_episodes(podcast.created_by).where(
-        Episode.status == Episode.STATUS_PUBLISHED,
-        Episode.published_at != None,  # noqa: E711
+        Episode.status == Episode.STATUS_PUBLISHED, Episode.published_at != None,  # noqa: E711
     )
     context = {"episodes": episodes, "settings": settings}
     with open(os.path.join(settings.TEMPLATE_PATH, "rss", "feed_template.xml")) as fh:
         template = Template(fh.read())
 
     rss_filename = os.path.join(settings.TMP_RSS_PATH, f"{podcast.publish_id}.xml")
-    logger.info(
-        f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]"
-    )
+    logger.info(f"Podcast #{podcast.publish_id}: Generation new file rss [{rss_filename}]")
     with open(rss_filename, "w") as fh:
         result_rss = template.render(podcast=podcast, **context)
         fh.write(result_rss)
@@ -82,9 +79,7 @@ async def check_state(episodes: Iterable[Episode]) -> list:
     """ Allows to get info about download progress for requested episodes """
 
     redis_client = RedisClient()
-    file_names = {
-        redis_client.get_key_by_filename(episode.file_name) for episode in episodes
-    }
+    file_names = {redis_client.get_key_by_filename(episode.file_name) for episode in episodes}
     current_states = await redis_client.async_get_many(file_names, pkey="event_key")
     result = []
     for episode in episodes:
@@ -132,17 +127,11 @@ def upload_process_hook(filename: str, chunk: int):
     Allows to handle uploading to Yandex.Cloud (S3) and update redis state (for user's progress).
     It is called by `s3.upload_file` (`podcast.utils.upload_episode`)
     """
-    episode_process_hook(
-        filename=filename, status=EpisodeStatuses.episode_uploading, chunk=chunk
-    )
+    episode_process_hook(filename=filename, status=EpisodeStatuses.episode_uploading, chunk=chunk)
 
 
 def episode_process_hook(
-    status: str,
-    filename: str,
-    total_bytes: int = 0,
-    processed_bytes: int = None,
-    chunk: int = 0,
+    status: str, filename: str, total_bytes: int = 0, processed_bytes: int = None, chunk: int = 0,
 ):
     """ Allows to handle processes of performing episode's file.
     """
@@ -189,7 +178,5 @@ def upload_episode(filename: str, src_path: str = None) -> Optional[str]:
         return
 
     logger.info("Great! uploading for %s was done!", filename)
-    logger.debug(
-        "Finished uploading for file %s. \n Result url is %s", filename, result_url
-    )
+    logger.debug("Finished uploading for file %s. \n Result url is %s", filename, result_url)
     return result_url

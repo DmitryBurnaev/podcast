@@ -20,13 +20,10 @@ def _update_all_rss(source_id: str):
     """ Allows to regenerate rss for all podcasts with requested episode (by source_id) """
 
     logger.info(
-        f"Episodes with source #%s: updating rss for all podcasts included for",
-        source_id,
+        f"Episodes with source #%s: updating rss for all podcasts included for", source_id,
     )
 
-    affected_episodes = list(
-        Episode.select(Episode.podcast).where(Episode.source_id == source_id)
-    )
+    affected_episodes = list(Episode.select(Episode.podcast).where(Episode.source_id == source_id))
     podcast_ids = [episode.podcast_id for episode in affected_episodes]
     logger.info(f"Found podcasts for rss updates: %s", podcast_ids)
 
@@ -43,9 +40,7 @@ def _update_episode_data(source_id: str, update_data: dict):
     ).execute()
 
 
-def _update_episodes(
-    source_id: str, file_size: int, status: str = Episode.STATUS_PUBLISHED
-):
+def _update_episodes(source_id: str, file_size: int, status: str = Episode.STATUS_PUBLISHED):
     """ Allows to mark ALL episodes (exclude archived) with provided source_id as published """
 
     logger.info(f"Episodes with source #{source_id}: updating states")
@@ -95,8 +90,7 @@ def download_episode(youtube_link: str, episode_id: int):
         episode.source_id,
     )
     query = Episode.update(status=Episode.STATUS_DOWNLOADING).where(
-        Episode.source_id == episode.source_id,
-        Episode.status != Episode.STATUS_ARCHIVED,
+        Episode.source_id == episode.source_id, Episode.status != Episode.STATUS_ARCHIVED,
     )
     query.execute()
 
@@ -133,9 +127,7 @@ def download_episode(youtube_link: str, episode_id: int):
     # -----------------------------------
 
     # ----- update episodes data -------
-    _update_episodes(
-        episode.source_id, file_size=StorageS3().get_file_size(result_filename)
-    )
+    _update_episodes(episode.source_id, file_size=StorageS3().get_file_size(result_filename))
     _update_all_rss(episode.source_id)
     podcast_utils.delete_file(os.path.join(settings.TMP_AUDIO_PATH, result_filename))
     # -----------------------------------
@@ -153,9 +145,7 @@ def generate_rss(podcast_id: int) -> Optional[str]:
     src_file = podcast_utils.render_rss_to_file(podcast_id)
     filename = os.path.basename(src_file)
     storage = StorageS3()
-    result_url = storage.upload_file(
-        src_file, filename, remote_path=settings.S3_BUCKET_RSS_PATH
-    )
+    result_url = storage.upload_file(src_file, filename, remote_path=settings.S3_BUCKET_RSS_PATH)
     if not result_url:
         logger.error("Couldn't upload RSS file to storage. SKIP")
         exit(1)

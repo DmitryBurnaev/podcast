@@ -39,9 +39,7 @@ class BasePodcastApiView(BaseApiView, ABC):
                 self.model_class, self.model_class.id == instance_id
             )
         except peewee.DoesNotExist:
-            raise web.HTTPNotFound(
-                body=f"{self.model_class.__name__} #{instance_id} not found."
-            )
+            raise web.HTTPNotFound(body=f"{self.model_class.__name__} #{instance_id} not found.")
 
         self._check_owner(instance)
         return instance
@@ -80,9 +78,7 @@ class DefaultPodcastRetrieveUpdateApiView(BasePodcastApiView):
                 .order_by(Podcast.created_at.desc())
             )
         except peewee.DoesNotExist:
-            podcast = await Podcast.create_first_podcast(
-                self.request.app.objects, self.user.id
-            )
+            podcast = await Podcast.create_first_podcast(self.request.app.objects, self.user.id)
 
         return podcast
 
@@ -90,9 +86,7 @@ class DefaultPodcastRetrieveUpdateApiView(BasePodcastApiView):
     @aiohttp_jinja2.template(template_name)
     async def get(self):
         podcast: Podcast = await self._get_object()
-        podcast.episodes = await podcast.get_episodes_async(
-            self.request.app.objects, self.user.id
-        )
+        podcast.episodes = await podcast.get_episodes_async(self.request.app.objects, self.user.id)
         return {"podcast": podcast, "settings": settings}
 
 
@@ -102,12 +96,7 @@ class PodcastRetrieveUpdateApiView(BasePodcastApiView):
     kwarg_pk = "podcast_id"
     validator = Validator(
         {
-            "name": {
-                "type": "string",
-                "minlength": 1,
-                "maxlength": 256,
-                "required": False,
-            },
+            "name": {"type": "string", "minlength": 1, "maxlength": 256, "required": False},
             "description": {"type": "string", "minlength": 1, "required": False},
         }
     )
@@ -116,9 +105,7 @@ class PodcastRetrieveUpdateApiView(BasePodcastApiView):
     @aiohttp_jinja2.template(template_name)
     async def get(self):
         podcast: Podcast = await self._get_object()
-        podcast.episodes = await podcast.get_episodes_async(
-            self.request.app.objects, self.user.id
-        )
+        podcast.episodes = await podcast.get_episodes_async(self.request.app.objects, self.user.id)
         return {"podcast": podcast, "settings": settings}
 
     @login_required
@@ -147,8 +134,7 @@ class PodcastDeleteApiView(BasePodcastApiView):
         podcast_file_names = {episode.file_name for episode in episodes}
         same_file_episodes = await self.request.app.objects.execute(
             Episode.select().where(
-                Episode.podcast_id != podcast.id,
-                Episode.file_name.in_(podcast_file_names),
+                Episode.podcast_id != podcast.id, Episode.file_name.in_(podcast_file_names),
             )
         )
         exist_file_names = {episode.file_name for episode in same_file_episodes or []}
@@ -170,9 +156,7 @@ class PodcastDeleteApiView(BasePodcastApiView):
     @login_required
     async def get(self):
         podcast: Podcast = await self._get_object()
-        episodes = await podcast.get_episodes_async(
-            self.request.app.objects, self.user.id
-        )
+        episodes = await podcast.get_episodes_async(self.request.app.objects, self.user.id)
         await self._delete_files(podcast, episodes)
         await self.request.app.objects.delete(podcast, recursive=True)
         add_message(self.request, f'Podcast "{podcast.name}" was deleted')
@@ -187,9 +171,7 @@ class PodcastUpdateRSSApiView(BasePodcastApiView):
     async def get(self):
         podcast = await self._get_object()
         await self._generate_rss(podcast.id)
-        add_message(
-            self.request, f"RSS for podcast {podcast.name} will be refreshed soon"
-        )
+        add_message(self.request, f"RSS for podcast {podcast.name} will be refreshed soon")
         return redirect(self.request, "podcast_details", podcast_id=podcast.id)
 
 
@@ -198,12 +180,7 @@ class PodcastListCreateApiView(BasePodcastApiView):
     model_class = Podcast
     validator = Validator(
         {
-            "name": {
-                "type": "string",
-                "minlength": 1,
-                "maxlength": 256,
-                "required": True,
-            },
+            "name": {"type": "string", "minlength": 1, "maxlength": 256, "required": True},
             "description": {"type": "string", "required": False},
         }
     )
@@ -236,19 +213,9 @@ class EpisodeRetrieveUpdateApiView(BasePodcastApiView):
     model_class = Episode
     validator = Validator(
         {
-            "title": {
-                "type": "string",
-                "minlength": 1,
-                "maxlength": 256,
-                "required": False,
-            },
+            "title": {"type": "string", "minlength": 1, "maxlength": 256, "required": False},
             "author": {"type": "string", "maxlength": 256, "required": False},
-            "watch_url": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 256,
-                "required": False,
-            },
+            "watch_url": {"type": "string", "minlength": 6, "maxlength": 256, "required": False},
             "description": {"type": "string", "required": False},
         }
     )
@@ -278,10 +245,7 @@ class EpisodeRetrieveUpdateApiView(BasePodcastApiView):
 
         await self.request.app.objects.update(episode)
         return redirect(
-            self.request,
-            "episode_details",
-            podcast_id=podcast_id,
-            episode_id=episode.id,
+            self.request, "episode_details", podcast_id=podcast_id, episode_id=episode.id,
         )
 
 
@@ -317,9 +281,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
         await self.request.app.objects.delete(episode, recursive=True)
         await self._generate_rss(podcast_id)
         self.logger.info(f"Episode {episode} successful removed.")
-        add_message(
-            self.request, f"Episode for youtube ID {episode.source_id} was removed."
-        )
+        add_message(self.request, f"Episode for youtube ID {episode.source_id} was removed.")
         return redirect(self.request, "podcast_details", podcast_id=podcast_id)
 
 
@@ -331,15 +293,11 @@ class EpisodeDownloadApiView(BasePodcastApiView):
     async def get(self):
         episode: Episode = await self._get_object()
         self.logger.info(f'Start download process for "{episode.watch_url}"')
-        add_message(
-            self.request, f"Downloading for youtube {episode.source_id} started."
-        )
+        add_message(self.request, f"Downloading for youtube {episode.source_id} started.")
         episode.status = Episode.STATUS_DOWNLOADING
         await self.request.app.objects.update(episode)
         await self._enqueue_task(
-            tasks.download_episode,
-            youtube_link=episode.watch_url,
-            episode_id=episode.id,
+            tasks.download_episode, youtube_link=episode.watch_url, episode_id=episode.id,
         )
         return redirect(self.request, "progress")
 
@@ -353,14 +311,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
     model_class = Podcast
     kwarg_pk = "podcast_id"
     validator = Validator(
-        {
-            "youtube_link": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 256,
-                "required": True,
-            },
-        }
+        {"youtube_link": {"type": "string", "minlength": 6, "maxlength": 256, "required": True}}
     )
 
     @login_required
@@ -368,9 +319,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
     @json_response
     async def get(self):
         podcast: Podcast = await self._get_object()
-        episodes = await podcast.get_episodes_async(
-            self.request.app.objects, self.user.id
-        )
+        episodes = await podcast.get_episodes_async(self.request.app.objects, self.user.id)
         return [{"id": episode.id, "title": episode.title} for episode in episodes], 200
 
     @login_required
@@ -427,23 +376,17 @@ class EpisodeCreateApiView(BasePodcastApiView):
             episode.status = Episode.STATUS_DOWNLOADING
             await self.request.app.objects.update(episode)
             await self._enqueue_task(
-                tasks.download_episode,
-                youtube_link=episode.watch_url,
-                episode_id=episode.id,
+                tasks.download_episode, youtube_link=episode.watch_url, episode_id=episode.id,
             )
             add_message(
-                self.request,
-                f"Downloading for youtube {episode.source_id} was started.",
+                self.request, f"Downloading for youtube {episode.source_id} was started.",
             )
 
         if is_mobile_app(self.request):
             return redirect(self.request, "progress")
 
         return redirect(
-            self.request,
-            "episode_details",
-            podcast_id=podcast_id,
-            episode_id=str(episode.id),
+            self.request, "episode_details", podcast_id=podcast_id, episode_id=str(episode.id),
         )
 
     def _replace_special_symbols(self, value):
@@ -488,9 +431,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
         try:
             youtube_info = await get_youtube_info(youtube_link)
         except YoutubeExtractInfoError:
-            add_message(
-                self.request, "Sorry.. Fetching YouTube video was failed", kind="error"
-            )
+            add_message(self.request, "Sorry.. Fetching YouTube video was failed", kind="error")
 
         if youtube_info:
             new_episode_data = {
@@ -502,8 +443,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
                 "author": youtube_info.author,
                 "length": youtube_info.length,
                 "file_size": same_episode_data.get("file_size"),
-                "file_name": same_episode_data.get("file_name")
-                or get_file_name(video_id),
+                "file_name": same_episode_data.get("file_name") or get_file_name(video_id),
                 "remote_url": same_episode_data.get("remote_url"),
             }
             message = "Episode was successfully created from the YouTube video."
@@ -518,9 +458,7 @@ class EpisodeCreateApiView(BasePodcastApiView):
         else:
             raise YoutubeFetchError
 
-        new_episode_data.update(
-            {"podcast_id": podcast_id, "created_by_id": self.user.id}
-        )
+        new_episode_data.update({"podcast_id": podcast_id, "created_by_id": self.user.id})
         return new_episode_data
 
 
@@ -550,23 +488,15 @@ class ProgressApiView(web.View):
 
         podcast_items = {
             podcast.id: podcast
-            for podcast in await Podcast.get_all(
-                self.request.app.objects, self.request.user.id
-            )
+            for podcast in await Podcast.get_all(self.request.app.objects, self.request.user.id)
         }
-        episodes = await Episode.get_in_progress(
-            self.request.app.objects, self.request.user.id
-        )
+        episodes = await Episode.get_in_progress(self.request.app.objects, self.request.user.id)
         progress = await check_state(episodes)
         if progress:
             for progress_item in progress:
                 podcast = podcast_items.get(progress_item["podcast_id"])
-                progress_item["podcast_publish_id"] = getattr(
-                    podcast, "publish_id", None
-                )
-                progress_item["status_display"] = status_choices.get(
-                    progress_item["status"]
-                )
+                progress_item["podcast_publish_id"] = getattr(podcast, "publish_id", None)
+                progress_item["status_display"] = status_choices.get(progress_item["status"])
         else:
             progress = []
 

@@ -38,13 +38,9 @@ class Podcast(BaseModel):
     @classmethod
     async def get_all(cls, objects, request_user_id):
         """ Return all podcasts """
-        return await objects.execute(
-            cls.select().where(cls.created_by_id == request_user_id)
-        )
+        return await objects.execute(cls.select().where(cls.created_by_id == request_user_id))
 
-    async def get_episodes_async(
-        self, objects: peewee_async.Manager, request_user_id: int
-    ):
+    async def get_episodes_async(self, objects: peewee_async.Manager, request_user_id: int):
         """ Return all episodes for current podcast item """
         return await objects.execute(self.get_episodes(request_user_id))
 
@@ -52,16 +48,14 @@ class Podcast(BaseModel):
         """ Return peewee query for """
         return (
             Episode.select()
-            .where(
-                Episode.podcast_id == self.id, Episode.created_by_id == request_user_id
-            )
+            .where(Episode.podcast_id == self.id, Episode.created_by_id == request_user_id)
             .order_by(Episode.published_at.desc(), Episode.created_at.desc())
         )
 
     @classmethod
     async def create_first_podcast(cls, objects, user_id: int):
         description = _(
-            'Add new episode -> wait for downloading -> copy podcast RSS-link '
+            "Add new episode -> wait for downloading -> copy podcast RSS-link "
             "-> past this link to your podcast application -> enjoy"
         )
         return await objects.create(
@@ -108,9 +102,7 @@ class Episode(BaseModel):
     file_name = peewee.CharField(max_length=128, null=True)
     file_size = peewee.IntegerField(null=True, default=0)
     author = peewee.CharField(max_length=256, null=True)
-    status = peewee.CharField(
-        max_length=16, choices=STATUS_CHOICES, default=STATUS_NEW, null=False
-    )
+    status = peewee.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_NEW, null=False)
     created_at = peewee.DateTimeField(default=datetime.utcnow)
     published_at = peewee.DateTimeField(null=True)
     created_by = peewee.ForeignKeyField(User, related_name="podcasts")

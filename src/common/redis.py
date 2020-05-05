@@ -21,9 +21,7 @@ class RedisClient:
     def __new__(cls):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.redis = redis.Redis(
-                host=REDIS_HOST, port=REDIS_PORT, db=0, max_connections=32
-            )
+            cls.redis = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, max_connections=32)
 
         return cls.__instance
 

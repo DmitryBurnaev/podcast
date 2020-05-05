@@ -21,9 +21,7 @@ from .mocks import MockYoutube
 def get_session_messages(response: ClientResponse) -> List[dict]:
     try:
         cookie_value = json.loads(response.cookies["AIOHTTP_SESSION"].value)
-        return [
-            message["message"] for _, message in cookie_value["session"]["messages"]
-        ]
+        return [message["message"] for _, message in cookie_value["session"]["messages"]]
     except KeyError:
         return []
 
@@ -53,13 +51,9 @@ async def test_episodes__get_details__ok(client, episode, urls):
     assert episode.title in content
 
 
-async def test_episodes__create__invalid_request__fail(
-    client, db_objects, episode, urls
-):
+async def test_episodes__create__invalid_request__fail(client, db_objects, episode, urls):
     request_data = {"youtube_fake_link": "some link"}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
     response_messages = get_session_messages(response)
     expected_messages = [
         "Input data is invalid: {'youtube_fake_link': ['unknown field'], "
@@ -70,20 +64,13 @@ async def test_episodes__create__invalid_request__fail(
     assert response.headers["Location"] == urls.episodes_list
 
 
-async def test_episodes__create__ok(
-    client, db_objects, podcast, urls, mocked_youtube, mocked_s3
-):
+async def test_episodes__create__ok(client, db_objects, podcast, urls, mocked_youtube, mocked_s3):
     youtube_link = mocked_youtube.watch_url
     request_data = {"youtube_link": youtube_link}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
     assert response.status == 302
     created_episode = await db_objects.get(Episode, watch_url=youtube_link)
-    assert (
-        response.headers["Location"]
-        == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
-    )
+    assert response.headers["Location"] == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
 
 
 async def test_episodes__create__video_unavailable__fail(
@@ -91,9 +78,7 @@ async def test_episodes__create__video_unavailable__fail(
 ):
     mocked_youtube.extract_info.side_effect = YoutubeExtractInfoError()
     request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
     response_messages = get_session_messages(response)
     expected_messages = ["Sorry.. Fetching YouTube video was failed"]
     assert response.status == 302
@@ -108,9 +93,7 @@ async def test_episodes__create__youtube_unexpected_error__fail(
 ):
     mocked_youtube.extract_info.side_effect = ValueError("Ooops")
     request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
     response_messages = get_session_messages(response)
     expected_messages = ["Sorry.. Fetching YouTube video was failed"]
     assert response.status == 302
@@ -120,13 +103,9 @@ async def test_episodes__create__youtube_unexpected_error__fail(
         await db_objects.get(Episode, watch_url=mocked_youtube.watch_url)
 
 
-async def test_episodes__create__incorrect_link__fail(
-    client, db_objects, episode, urls
-):
+async def test_episodes__create__incorrect_link__fail(client, db_objects, episode, urls):
     request_data = {"youtube_link": "http://path.to-not-youtube.com"}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
     response_messages = get_session_messages(response)
     expected_messages = ["YouTube link is not correct: http://path.to-not-youtube.com"]
     assert response.status == 302
@@ -143,18 +122,13 @@ async def test_episodes__create__same_episode_in_same_podcast__ok(
     exists_episode = await db_objects.create(Episode, **episode_data)
 
     request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
 
     response_messages = get_session_messages(response)
     expected_messages = ["Episode already exists in podcast."]
     assert response.status == 302
     assert response_messages == expected_messages
-    assert (
-        response.headers["Location"]
-        == f"/podcasts/{podcast.id}/episodes/{exists_episode.id}/"
-    )
+    assert response.headers["Location"] == f"/podcasts/{podcast.id}/episodes/{exists_episode.id}/"
 
 
 async def test_episodes__create__same_episode_in_other_podcast__ok(
@@ -185,9 +159,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     await db_objects.create(Episode, **episode_data)
 
     request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
 
     created_episode: Episode = await db_objects.get(
         Episode, podcast_id=podcast.id, source_id=mocked_youtube.video_id
@@ -200,10 +172,7 @@ async def test_episodes__create__same_episode_in_other_podcast__ok(
     ]
 
     assert response.status == 302
-    assert (
-        response.headers["Location"]
-        == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
-    )
+    assert response.headers["Location"] == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
 
     assert created_episode.title == updated_title
     assert created_episode.description == updated_description
@@ -236,9 +205,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     await db_objects.create(Episode, **episode_data)
 
     request_data = {"youtube_link": mocked_youtube.watch_url}
-    response = await client.post(
-        urls.episodes_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
 
     created_episode: Episode = await db_objects.get(
         Episode, podcast_id=podcast.id, source_id=mocked_youtube.video_id
@@ -252,10 +219,7 @@ async def test_episodes__create__same_episode_in_other_podcast__youtube_video_un
     ]
 
     assert response.status == 302
-    assert (
-        response.headers["Location"]
-        == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
-    )
+    assert response.headers["Location"] == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
 
     assert created_episode.title == episode_data["title"]
     assert created_episode.description == episode_data["description"]
@@ -271,9 +235,7 @@ async def test_episodes__create__check_for_start_downloading__ok(
     youtube_link = mocked_youtube.watch_url
     request_data = {"youtube_link": youtube_link}
     with patch("rq.queue.Queue.enqueue") as rq_mock:
-        response = await client.post(
-            urls.episodes_list, data=request_data, allow_redirects=False
-        )
+        response = await client.post(urls.episodes_list, data=request_data, allow_redirects=False)
 
     created_episode: Episode = await db_objects.get(Episode, watch_url=youtube_link)
     assert response.status == 302
@@ -282,15 +244,10 @@ async def test_episodes__create__check_for_start_downloading__ok(
         episode_id=created_episode.id,
         youtube_link=created_episode.watch_url,
     )
-    assert (
-        response.headers["Location"]
-        == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
-    )
+    assert response.headers["Location"] == f"/podcasts/{podcast.id}/episodes/{created_episode.id}/"
 
 
-async def test_episodes__delete__ok(
-    client, db_objects, episode_data, urls, urls_tpl, mocked_s3
-):
+async def test_episodes__delete__ok(client, db_objects, episode_data, urls, urls_tpl, mocked_s3):
     podcast_id = episode_data["podcast_id"]
     episode_data["source_id"] = f"source_{time.time_ns()}"
     episode_data["filename"] = f"fn_{time.time_ns()}"
@@ -301,9 +258,7 @@ async def test_episodes__delete__ok(
     mocked_s3.delete_files_async_mock.assert_called_with([episode.file_name])
 
     assert response.status == 302
-    assert response.headers["Location"] == urls_tpl.podcasts_details.format(
-        podcast_id=podcast_id
-    )
+    assert response.headers["Location"] == urls_tpl.podcasts_details.format(podcast_id=podcast_id)
     with pytest.raises(peewee.DoesNotExist):
         await db_objects.get(Episode, id=episode.id)
 
@@ -334,9 +289,7 @@ async def test_episodes__delete__same_episode_exists__ok(
 
     podcast_data["publish_id"] = str(time.time())
     another_podcast = await db_objects.create(Podcast, **podcast_data)
-    episode_data.update(
-        {"podcast_id": another_podcast.id, "status": same_episode_status}
-    )
+    episode_data.update({"podcast_id": another_podcast.id, "status": same_episode_status})
     await db_objects.create(Episode, **episode_data)
     url = urls_tpl.episodes_delete.format(podcast_id=podcast.id, episode_id=episode.id)
     response = await client.get(url, allow_redirects=False)
@@ -346,23 +299,17 @@ async def test_episodes__delete__same_episode_exists__ok(
     expected_messages = [f"Episode for youtube ID {episode.source_id} was removed."]
 
     assert response.status == 302
-    assert response.headers["Location"] == urls_tpl.podcasts_details.format(
-        podcast_id=podcast.id
-    )
+    assert response.headers["Location"] == urls_tpl.podcasts_details.format(podcast_id=podcast.id)
     assert response_messages == expected_messages
 
 
-async def test_episodes__download__start_downloading__ok(
-    client, podcast, episode, urls
-):
+async def test_episodes__download__start_downloading__ok(client, podcast, episode, urls):
     with patch("rq.queue.Queue.enqueue") as rq_mock:
         response = await client.get(urls.episodes_download, allow_redirects=False)
         assert response.status == 302
 
         rq_mock.assert_called_with(
-            tasks.download_episode,
-            episode_id=episode.id,
-            youtube_link=episode.watch_url,
+            tasks.download_episode, episode_id=episode.id, youtube_link=episode.watch_url,
         )
 
     response_messages = get_session_messages(response)
@@ -539,9 +486,7 @@ async def test_episodes__progress__filter_by_user__ok(
     p1_episode__requested_user = await db_objects.create(
         Episode, **podcast_1__episode_data__requested_user
     )
-    p2_episode__other_user = await db_objects.create(
-        Episode, **podcast_2__episode_data__other_user
-    )
+    p2_episode__other_user = await db_objects.create(Episode, **podcast_2__episode_data__other_user)
 
     mocked_redis.get_many.return_value = {
         p1_episode__requested_user.file_name.partition(".")[0]: {
@@ -561,9 +506,7 @@ async def test_episodes__progress__filter_by_user__ok(
     actual_progress = await response.json()
 
     expected_episode_ids = [p2_episode__other_user.id]
-    actual_episode_ids = [
-        progress["episode_id"] for progress in actual_progress["progress"]
-    ]
+    actual_episode_ids = [progress["episode_id"] for progress in actual_progress["progress"]]
     assert expected_episode_ids == actual_episode_ids
 
 
@@ -576,7 +519,5 @@ async def test_episodes__progress__empty_list__ok(unauth_client, urls, db_object
     assert response.status == 200, f"Progress API is not available: {response.text}"
     actual_progress = await response.json()
 
-    actual_episode_ids = [
-        progress["episode_id"] for progress in actual_progress["progress"]
-    ]
+    actual_episode_ids = [progress["episode_id"] for progress in actual_progress["progress"]]
     assert actual_episode_ids == []

@@ -83,9 +83,7 @@ LOGGING = {
             "datefmt": "%d.%m.%Y %H:%M:%S",
         },
     },
-    "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
-    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
     "loggers": {
         "modules": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
         "common": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},

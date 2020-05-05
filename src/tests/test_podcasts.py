@@ -12,16 +12,12 @@ from modules.podcast.models import Podcast, Episode
 def get_session_messages(response: ClientResponse) -> List[dict]:
     try:
         cookie_value = json.loads(response.cookies["AIOHTTP_SESSION"].value)
-        return [
-            message["message"] for _, message in cookie_value["session"]["messages"]
-        ]
+        return [message["message"] for _, message in cookie_value["session"]["messages"]]
     except KeyError:
         return []
 
 
-async def test_podcasts__get_list__ok(
-    client, db_objects, urls, user, podcast, podcast_data
-):
+async def test_podcasts__get_list__ok(client, db_objects, urls, user, podcast, podcast_data):
     podcast_data["publish_id"] = str(time.time())
     podcast_data["created_by"] = user.id
     another_podcast = await db_objects.create(Podcast, **podcast_data)
@@ -50,13 +46,9 @@ async def test_podcasts__get_default_podcast__ok(client, podcast, urls):
     assert podcast.name in content
 
 
-async def test_podcasts__create__invalid_request__fail(
-    client, db_objects, episode, urls
-):
+async def test_podcasts__create__invalid_request__fail(client, db_objects, episode, urls):
     request_data = {"name_as_not_allowed_field": "some link"}
-    response = await client.post(
-        urls.podcasts_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.podcasts_list, data=request_data, allow_redirects=False)
     response_messages = get_session_messages(response)
     expected_messages = [
         "Input data is invalid: {'name': ['required field'], "
@@ -69,13 +61,9 @@ async def test_podcasts__create__invalid_request__fail(
 
 async def test_podcasts__create__ok(client, db_objects, podcast, urls):
     request_data = {"name": "test name", "description": "test description"}
-    response = await client.post(
-        urls.podcasts_list, data=request_data, allow_redirects=False
-    )
+    response = await client.post(urls.podcasts_list, data=request_data, allow_redirects=False)
     assert response.status == 302
-    created_podcast = await db_objects.get(
-        Podcast.select().order_by(Podcast.created_at.desc())
-    )
+    created_podcast = await db_objects.get(Podcast.select().order_by(Podcast.created_at.desc()))
     assert response.headers["Location"] == f"/podcasts/{created_podcast.id}/"
     assert created_podcast.name == "test name"
     assert created_podcast.description == "test description"
