@@ -28,6 +28,7 @@ gunicorn = "==19.9.0"
 [dev-packages]
 pytest = "==5.2.2"
 pytest-aiohttp = "==0.3.0"
+asynctest = "==0.13.0"
 coverage = "==4.5.4"
 black = "==19.10b0"
 flake8 = "==3.7.9"
