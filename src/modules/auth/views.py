@@ -14,7 +14,6 @@ import settings
 from app_i18n import aiohttp_translations
 from common.excpetions import (
     InvalidParameterError,
-    InviteTokenInvalidationError,
     NotAuthenticatedError,
 )
 from common.views import BaseApiView
@@ -133,12 +132,13 @@ class SignUpView(BaseApiView):
                 )
             )
         except peewee.DoesNotExist as err:
-            logger.exception("Couldn't invite user: %s", err)
-            raise InviteTokenInvalidationError(details=str(err))
+            add_message(self.request, "Invitation link is unavailable", kind="danger")
+            logger.error("Couldn't signup user: %s", err)
+            return redirect(self.request, "sign_up")
 
         if await self.request.app.objects.count(User.select().where(User.username ** username)):
             add_message(self.request, f"{username} already exists", kind="danger")
-            redirect(self.request, "sign_up")
+            return redirect(self.request, "sign_up")
 
         user = await self.request.app.objects.create(
             User, username=username, password=crypt.crypt(password)
@@ -180,27 +180,30 @@ class InviteUserView(BaseApiView):
     @login_required
     @errors_api_wrapped
     async def post(self):
-        cleaned_data = await self._validate()
-        email = cleaned_data["email"]
+        cleaned_data = await self._validate(allow_empty=True)
+        email = cleaned_data.get("email")
         token = UserInvite.generate_token()
         expired_at = datetime.utcnow() + timedelta(days=self.INVITE_EXPIRED_DAYS)
         logger.info("INVITE: create for %s (expired %s) token [%s]", email, expired_at, token)
         user_invite: UserInvite = await self.request.app.objects.create(
             UserInvite, created_by=self.user, email=email, token=token, expired_at=expired_at
         )
-        await self._send_email(user_invite)
+        logger.info("Invite object %s created. Sending message...", user_invite)
+        if email:
+            await self._send_email(user_invite)
+
         return self.model_to_dict(user_invite), http.HTTPStatus.CREATED
 
     @staticmethod
     async def _send_email(user_invite: UserInvite):
         link = f"{settings.SITE_URL}/sign-up/?invite={user_invite.token}"
-        body = f"""
-            <p>Hello! :) You have been invited to {settings.SITE_URL}</p>
-            <p>Please follow the link </p>
-            <p><a href={link}>{link}</a></p>
-        """
+        body = (
+            f"<p>Hello! :) You have been invited to {settings.SITE_URL}</p>"
+            f"<p>Please follow the link </p>"
+            f"<p><a href={link}>{link}</a></p>"
+        )
         await send_email(
             recipient_email=user_invite.email,
             subject="Welcome to podcast.devpython.ru",
-            html_content=body,
+            html_content=body.strip(),
         )

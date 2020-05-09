@@ -4,12 +4,14 @@ import random
 import time
 import uuid
 from collections import namedtuple
+from datetime import datetime, timedelta
 from typing import Tuple, List, NamedTuple
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from hashlib import blake2b
 
 import peewee_async
 import pytest
+from asynctest import CoroutineMock
 from youtube_dl import YoutubeDL
 
 from app import create_app
@@ -17,7 +19,7 @@ from common.models import database
 from common.redis import RedisClient
 from common.storage import StorageS3
 from common.utils import database_init
-from modules.auth.models import User
+from modules.auth.models import User, UserInvite
 from modules.podcast.models import Podcast, Episode
 from modules.youtube import utils as youtube_utils
 from .mocks import MockYoutube, MockRedisClient, MockS3Client
@@ -135,6 +137,17 @@ def episode(db_objects, episode_data):
 
 
 @pytest.fixture
+def user_invite(db_objects, user):
+    with db_objects.allow_sync():
+        yield UserInvite.create(
+            email="test@test.com",
+            token=f"{uuid.uuid4().hex}",
+            expired_at=datetime.utcnow() + timedelta(days=1),
+            created_by=user,
+        )
+
+
+@pytest.fixture
 def mocked_youtube(monkeypatch) -> MockYoutube:
     mock_youtube = MockYoutube()
     monkeypatch.setattr(YoutubeDL, "__new__", lambda *_, **__: mock_youtube)  # noqa
@@ -164,6 +177,14 @@ def mocked_ffmpeg(monkeypatch) -> Mock:
     monkeypatch.setattr(youtube_utils, "ffmpeg_preparation", mocked_ffmpeg_function)
     yield mocked_ffmpeg_function
     del mocked_ffmpeg_function
+
+
+@pytest.fixture
+def mocked_auth_send() -> Mock:
+    patcher = patch("modules.auth.views.send_email", new=CoroutineMock())
+    patcher.start()
+    yield patcher.new
+    patcher.stop()
 
 
 named_urls = namedtuple(
