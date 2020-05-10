@@ -10,7 +10,7 @@ class BaseApplicationError(Exception):
 
 class NotAuthenticatedError(BaseApplicationError):
     status_code = 401
-    message = "User or password invalid"
+    message = "Username or password is invalid"
 
 
 class InviteTokenInvalidationError(BaseApplicationError):

@@ -1,4 +1,3 @@
-import crypt
 import uuid
 from datetime import datetime, timedelta
 
@@ -18,7 +17,8 @@ class SignInViewTestCase:
 
     async def test_signin__ok(self, unauth_client, web_app):
         username, password = f"u_{uuid.uuid4().hex}"[:10], "password"
-        await web_app.objects.create(User, username=username, password=crypt.crypt(password))
+
+        await web_app.objects.create(User, username=username, password=User.make_password(password))
         request_data = {"username": username, "password": password}
         response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
         assert response.status == 302
@@ -39,7 +39,7 @@ class SignInViewTestCase:
         request_data = {"username": "fake_user", "password": "password"}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
-        assert "User fake_user was not found" in content
+        assert "Username or password is invalid" in content
 
     async def test_signin__password_missing__fail(self, unauth_client):
         response = await unauth_client.post(self.path, data={"username": "fake_user"})
@@ -110,17 +110,23 @@ class SignUpViewTestCase:
         self, unauth_client, user_data, web_app, user_invite
     ):
         username, password = user_data
-        await web_app.objects.create(User, username=username, password=crypt.crypt(password))
+        await web_app.objects.create(User, username=username, password=password)
         request_data = {"username": username, "password": password, "token": user_invite.token}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert f"{username} already exists" in content
 
-    async def test_signup__token_is_missed__fail(self, unauth_client):
+    async def test_signup__token_is_blank__fail(self, unauth_client):
         request_data = {"username": "username", "password": "password", "token": ""}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
-        assert "Input data is invalid: {&#39;token&#39;: [&#39;min length is 32&#39;]}" in content
+        assert "Input data is invalid: Invite token is missed or incorrect" in content
+
+    async def test_signup__token_is_missed__fail(self, unauth_client):
+        request_data = {"username": "username", "password": "password"}
+        response = await unauth_client.post(self.path, data=request_data)
+        content = await response.text()
+        assert "Input data is invalid: Invite token is missed or incorrect" in content
 
     async def test_signup__token_is_expired__fail(self, unauth_client, user, db_objects):
         token = f"{uuid.uuid4().hex}"

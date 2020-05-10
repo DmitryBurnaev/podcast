@@ -49,7 +49,7 @@ S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "images/")
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SENDGRID_API_VERSION = "v3"
-EMAIL_FROM = os.getenv("EMAIL_FROM")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "").strip("'\"")
 
 RESULT_FILE_EXT = "mp3"
 

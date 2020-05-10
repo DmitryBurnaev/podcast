@@ -1,10 +1,10 @@
-import uuid
+import secrets
 from datetime import datetime
-from hashlib import md5
 
 import peewee
 
 from common.models import BaseModel
+from modules.auth.hasher import PBKDF2PasswordHasher
 
 
 class User(BaseModel):
@@ -19,6 +19,15 @@ class User(BaseModel):
 
     class Meta:
         db_table = "auth_users"
+
+    @classmethod
+    def make_password(cls, raw_password: str):
+        hasher = PBKDF2PasswordHasher()
+        return hasher.encode(raw_password)
+
+    def verify_password(self, raw_password: str):
+        hasher = PBKDF2PasswordHasher()
+        return hasher.verify(raw_password, encoded=str(self.password))
 
 
 class UserInvite(BaseModel):
@@ -42,4 +51,4 @@ class UserInvite(BaseModel):
 
     @classmethod
     def generate_token(cls):
-        return md5(uuid.uuid4().hex.encode("utf-8")).hexdigest()
+        return secrets.token_urlsafe()[: cls.TOKEN_MAX_LENGTH]

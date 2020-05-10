@@ -7,7 +7,7 @@ if [ "${ENV}" = "web" ]
   then
     cd /podcast/src && \
     python -m collectstatic && \
-    python -m migrations apply && \
+    python -m migrations upgrade && \
     gunicorn app:create_app --bind 0.0.0.0:8000 --worker-class aiohttp.GunicornWebWorker --user podcast
 
 elif [ "${ENV}" = "rq" ]
