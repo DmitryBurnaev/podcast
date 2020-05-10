@@ -10,6 +10,8 @@ database = peewee_async.PostgresqlDatabase(None)
 class BaseModel(peewee.Model):
     """ Base model with db Meta """
 
+    id: int = None  # auto matching field by peewee
+
     class Meta:
         database = database
         db_table = NotImplemented
@@ -17,3 +19,7 @@ class BaseModel(peewee.Model):
     def to_dict(self, field_names: List[str]):
         field_names = field_names or list(self.__class__._meta.sorted_field_names)
         return {field: getattr(self, field) for field in field_names}
+
+    @classmethod
+    async def create_async(cls, db_objects: peewee_async.Manager, **kwargs) -> "BaseModel":
+        return await db_objects.create(cls, **kwargs)

@@ -1,9 +1,7 @@
 import http
 import logging
-import crypt
 from time import time
 from datetime import datetime, timedelta
-from hmac import compare_digest as compare_hash
 
 import aiohttp_jinja2
 import peewee
@@ -17,6 +15,7 @@ from common.excpetions import (
     NotAuthenticatedError,
 )
 from common.views import BaseApiView
+from modules.auth.hasher import PBKDF2PasswordHasher
 from modules.auth.models import User, UserInvite
 from common.utils import redirect, add_message, is_mobile_app, send_email
 from common.decorators import (
@@ -36,7 +35,6 @@ _ = aiohttp_translations.gettext
 def _login_and_redirect(request, user, redirect_to="index"):
     request.session["user"] = str(user.id)
     request.session["time"] = time()
-    print(request.session)
     redirect_to = "default_podcast_details" if is_mobile_app(request) else redirect_to
     redirect(request, redirect_to)
 
@@ -67,20 +65,25 @@ class SignInView(BaseApiView):
         password = cleaned_data["password"]
 
         if not username:
-            add_message(self.request, f"Provide both username and password", kind="warning")
+            add_message(self.request, "Provide both username and password", kind="warning")
             redirect(self.request, "sign_in")
+
         try:
             user = await self.authenticate(username, password)
             _login_and_redirect(self.request, user)
         except User.DoesNotExist:
-            raise InvalidParameterError(f"User {username} was not found")
+            logger.info("Not found user with username [%s]", username)
+            raise NotAuthenticatedError
 
         redirect(self.request, "sign_in")
 
     async def authenticate(self, username, password):
         user = await self.request.app.objects.get(User, User.username == username)
-        if not compare_hash(user.password, crypt.crypt(password, user.password)):
+        hasher = PBKDF2PasswordHasher()
+        if not hasher.verify(password, encoded=user.password):
+            logger.error("Password didn't verify with encoded version (username: [%s])", username)
             raise NotAuthenticatedError
+
         return user
 
 
@@ -105,7 +108,8 @@ class SignUpView(BaseApiView):
                 "required": True,
                 "regex": "^\w+$",
             },
-            "token": {"type": "string", "minlength": 32, "maxlength": 32, "required": True},
+            # "token": {"type": "string", "minlength": 32, "maxlength": 32, "required": True},
+            "token": {"type": "string", "empty": True},
         }
     )
 
@@ -122,7 +126,12 @@ class SignUpView(BaseApiView):
         cleaned_data = await self._validate()
         username = cleaned_data["username"]
         password = cleaned_data["password"]
-        invite_token = cleaned_data["token"]
+        invite_token = cleaned_data.get("token")
+        db_objects = self.request.app.objects
+
+        if not invite_token:
+            raise InvalidParameterError(details="Invite token is missed or incorrect")
+
         try:
             user_invite: UserInvite = await self.request.app.objects.get(
                 UserInvite.select().where(
@@ -136,13 +145,12 @@ class SignUpView(BaseApiView):
             logger.error("Couldn't signup user: %s", err)
             return redirect(self.request, "sign_up")
 
-        if await self.request.app.objects.count(User.select().where(User.username ** username)):
+        if await db_objects.count(User.select().where(User.username ** username)):
             add_message(self.request, f"{username} already exists", kind="danger")
             return redirect(self.request, "sign_up")
 
-        user = await self.request.app.objects.create(
-            User, username=username, password=crypt.crypt(password)
-        )
+        password = User.make_password(password)
+        user = await User.create_async(db_objects, username=username, password=password)
         user_invite.user = user
         user_invite.is_applied = True
         await self.request.app.objects.update(user_invite)
@@ -185,12 +193,16 @@ class InviteUserView(BaseApiView):
         token = UserInvite.generate_token()
         expired_at = datetime.utcnow() + timedelta(days=self.INVITE_EXPIRED_DAYS)
         logger.info("INVITE: create for %s (expired %s) token [%s]", email, expired_at, token)
-        user_invite: UserInvite = await self.request.app.objects.create(
-            UserInvite, created_by=self.user, email=email, token=token, expired_at=expired_at
-        )
-        logger.info("Invite object %s created. Sending message...", user_invite)
-        if email:
-            await self._send_email(user_invite)
+        # TODO: use more union way to get db_objects (aka binding this value in __init__)
+        db_objects = self.request.app.objects
+
+        async with db_objects.transaction():
+            user_invite = await UserInvite.create_async(
+                db_objects, created_by=self.user, email=email, token=token, expired_at=expired_at
+            )
+            logger.info("Invite object %r created. Sending message...", user_invite)
+            if email:
+                await self._send_email(user_invite)
 
         return self.model_to_dict(user_invite), http.HTTPStatus.CREATED
 
