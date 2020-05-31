@@ -10,12 +10,13 @@ from modules.auth.hasher import PBKDF2PasswordHasher
 class User(BaseModel):
     """ Simple model for save users in DB """
 
-    username = peewee.CharField(unique=True, index=True, max_length=10, null=False)
+    email = peewee.CharField(max_length=32, index=True, null=False, unique=True)
     password = peewee.CharField(max_length=256, null=False)
     is_active = peewee.BooleanField(default=True)
+    is_superuser = peewee.BooleanField(default=False)
 
     def __repr__(self):
-        return f"<User #{self.id} {self.username}"
+        return f"<User #{self.id} {self.email}"
 
     class Meta:
         db_table = "auth_users"

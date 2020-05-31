@@ -3,14 +3,14 @@ class BaseApplicationError(Exception):
     details = None
     status_code = 500
 
-    def __init__(self, message=None, details=None):
+    def __init__(self, message=None, details=None, redirect_url: str = None):
         self.message = message or self.message
         self.details = details or self.details
 
 
-class NotAuthenticatedError(BaseApplicationError):
+class AuthenticationFailedError(BaseApplicationError):
     status_code = 401
-    message = "Username or password is invalid"
+    message = "Authentication credentials are invalid"
 
 
 class InviteTokenInvalidationError(BaseApplicationError):
@@ -21,6 +21,11 @@ class InviteTokenInvalidationError(BaseApplicationError):
 class InvalidParameterError(BaseApplicationError):
     status_code = 400
     message = "Input data is invalid"
+
+
+class Forbidden(BaseApplicationError):
+    status_code = 403
+    message = "You don't have permission to perform this action"
 
 
 class YoutubeFetchError(Exception):
