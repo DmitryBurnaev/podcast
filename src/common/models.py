@@ -21,5 +21,24 @@ class BaseModel(peewee.Model):
         return {field: getattr(self, field) for field in field_names}
 
     @classmethod
-    async def create_async(cls, db_objects: peewee_async.Manager, **kwargs) -> "BaseModel":
+    async def async_create(cls, db_objects: peewee_async.Manager, **kwargs) -> "BaseModel":
         return await db_objects.create(cls, **kwargs)
+
+    @classmethod
+    async def async_get(cls, db_objects: peewee_async.Manager, **filter_kwargs) -> "BaseModel":
+        query = cls.select()
+        for filter_name, filter_value in filter_kwargs.items():
+            field, _, criteria = filter_name.partition("__")
+            if criteria in ("eq", ""):
+                query = query.where(getattr(cls, field) == filter_value)
+            elif criteria == "gt":
+                query = query.where(getattr(cls, field) > filter_value)
+            elif criteria == "lt":
+                query = query.where(getattr(cls, field) < filter_value)
+            else:
+                raise NotImplementedError(f"Unexpected criteria: {criteria}")
+
+        return await db_objects.get(query)
+
+    async def async_update(self, db_objects):
+        return await db_objects.update(self)

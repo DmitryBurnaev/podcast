@@ -138,6 +138,7 @@ make lint
 | APP_PORT| App default port running (used by docker compose) | 8000|
 | APP_HOST| App default host running (used by docker compose) | 0.0.0.0|
 | LOG_LEVEL| Current logging level | DEBUG|
+| SECRET_KEY| Is used for encoding secrets | _abc3412df_|
 | SITE_URL| Your URL address (is used for full url to media files) | http://podcast.site.com|
 | DATABASE_HOST| PostgresSQL database host | 127.0.0.1|
 | DATABASE_PORT| PostgresSQL database port | 5432|

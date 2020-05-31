@@ -132,6 +132,8 @@ def migrations_upgrade() -> None:
 
     if not applied_count:
         print("No migrations to apply.")
+    else:
+        print(f"Successful applied {applied_count} migrations")
 
 
 def migrations_downgrade(migration_number: str) -> None:

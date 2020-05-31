@@ -451,8 +451,8 @@ async def test_episodes__progress__several_podcasts__filter_by_status__ok(
 async def test_episodes__progress__filter_by_user__ok(
     unauth_client, db_objects, podcast, podcast_data, episode_data, urls, mocked_redis
 ):
-    username, password = get_user_data()
-    other_user = await db_objects.create(User, username=username, password=password)
+    email, password = get_user_data()
+    other_user = await db_objects.create(User, email=email, password=password)
     client = make_cookie(unauth_client, {"user": other_user.id})
 
     podcast_data["publish_id"] = str(time.time())
@@ -511,8 +511,8 @@ async def test_episodes__progress__filter_by_user__ok(
 
 
 async def test_episodes__progress__empty_list__ok(unauth_client, urls, db_objects):
-    username, password = get_user_data()
-    other_user = await db_objects.create(User, username=username, password=password)
+    email, password = get_user_data()
+    other_user = await db_objects.create(User, email=email, password=password)
     client = make_cookie(unauth_client, {"user": other_user.id})
 
     response = await client.get(urls.progress_api, allow_redirects=False)

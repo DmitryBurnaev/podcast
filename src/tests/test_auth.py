@@ -6,7 +6,7 @@ from modules.auth.models import User, UserInvite
 from .conftest import make_cookie
 
 
-class SignInViewTestCase:
+class TestSignInView:
     path = "/sign-in/"
 
     async def test_signin__get_html__ok(self, unauth_client):
@@ -16,10 +16,10 @@ class SignInViewTestCase:
         assert "Please sign in" in content
 
     async def test_signin__ok(self, unauth_client, web_app):
-        username, password = f"u_{uuid.uuid4().hex}"[:10], "password"
+        email, password = f"u_{uuid.uuid4().hex}"[:10], "password"
 
-        await web_app.objects.create(User, username=username, password=User.make_password(password))
-        request_data = {"username": username, "password": password}
+        await web_app.objects.create(User, email=email, password=User.make_password(password))
+        request_data = {"email": email, "password": password}
         response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
         assert response.status == 302
         location = response.headers["Location"]
@@ -36,19 +36,19 @@ class SignInViewTestCase:
         assert urls.sign_in == response.headers["Location"]
 
     async def test_signin__user_not_found__fail(self, unauth_client):
-        request_data = {"username": "fake_user", "password": "password"}
+        request_data = {"email": "fake_user@test.com", "password": "password"}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
-        assert "Username or password is invalid" in content
+        assert "Authentication credentials are invalid" in content
 
     async def test_signin__password_missing__fail(self, unauth_client):
-        response = await unauth_client.post(self.path, data={"username": "fake_user"})
+        response = await unauth_client.post(self.path, data={"email": "fake_user"})
         content = await response.text()
         assert "password" in content
         assert "required field" in content
 
 
-class SignUpViewTestCase:
+class TestSignUpView:
     path = "/sign-up/"
 
     async def test_signup__get_html__ok(self, unauth_client):
@@ -58,8 +58,8 @@ class SignUpViewTestCase:
         assert "Please sign Up" in content
 
     async def test_signup__ok(self, unauth_client, user_data, web_app, user_invite):
-        username, password = user_data
-        request_data = {"username": username, "password": password, "token": user_invite.token}
+        email, password = user_data
+        request_data = {"email": email, "password": password, "token": user_invite.token}
         response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
         assert response.status == 302
         location = response.headers["Location"]
@@ -70,19 +70,22 @@ class SignUpViewTestCase:
         content = await response.text()
         assert "podcasts" in content
 
-        user = await web_app.objects.get(User.select().where(User.username == username))
+        user = await web_app.objects.get(User.select().where(User.email == email))
         assert user is not None
 
     async def test_signup__check_invite__ok(
-        self, unauth_client, user_data, db_objects, user_invite
+        self, web_app, unauth_client, user_data, db_objects, user_invite
     ):
-        username, password = user_data
-        request_data = {"username": username, "password": password, "token": user_invite.token}
-        await unauth_client.post(self.path, data=request_data, allow_redirects=False)
-        user = await db_objects.get(User.select().where(User.username == username))
-        saved_user_invite = await db_objects.get(
-            UserInvite.select().where(UserInvite.id == user_invite.id)
-        )
+        email, password = user_data
+        request_data = {"email": email, "password": password, "token": user_invite.token}
+        response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
+        assert response.status == 302
+        location = response.headers["Location"]
+        assert str(web_app.router["default_podcast_details"].url_for()) == location
+
+        user = await User.async_get(db_objects, email=email)
+        saved_user_invite = await UserInvite.async_get(db_objects, id=user_invite.id)
+
         assert user is not None
         assert saved_user_invite.user == user
         assert saved_user_invite.is_applied
@@ -92,16 +95,16 @@ class SignUpViewTestCase:
         assert response.status == 302
         assert response.headers["Location"] == self.path
 
-    async def test_signup__username_too_large__fail(self, unauth_client):
-        request_data = {"username": "fake_user_" * 30, "password": "password"}
+    async def test_signup__email_too_large__fail(self, unauth_client):
+        request_data = {"email": "fake_user_" * 30, "password": "password"}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert "Input data is invalid" in content
-        assert "username" in content
-        assert "max length is 10" in content
+        assert "email" in content
+        assert "max length is 128" in content
 
     async def test_signup__password_missing__fail(self, unauth_client):
-        response = await unauth_client.post(self.path, data={"username": "fake_user"})
+        response = await unauth_client.post(self.path, data={"email": "fake_user"})
         content = await response.text()
         assert "password" in content
         assert "required field" in content
@@ -109,21 +112,21 @@ class SignUpViewTestCase:
     async def test_signup__user_already_exists__fail(
         self, unauth_client, user_data, web_app, user_invite
     ):
-        username, password = user_data
-        await web_app.objects.create(User, username=username, password=password)
-        request_data = {"username": username, "password": password, "token": user_invite.token}
+        email, password = user_data
+        await web_app.objects.create(User, email=email, password=password)
+        request_data = {"email": email, "password": password, "token": user_invite.token}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
-        assert f"{username} already exists" in content
+        assert f"{email} already exists" in content
 
     async def test_signup__token_is_blank__fail(self, unauth_client):
-        request_data = {"username": "username", "password": "password", "token": ""}
+        request_data = {"email": "token-test@test.com", "password": "password", "token": ""}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert "Input data is invalid: Invite token is missed or incorrect" in content
 
     async def test_signup__token_is_missed__fail(self, unauth_client):
-        request_data = {"username": "username", "password": "password"}
+        request_data = {"email": "token-test@test.com", "password": "password"}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert "Input data is invalid: Invite token is missed or incorrect" in content
@@ -138,7 +141,7 @@ class SignUpViewTestCase:
             expired_at=datetime.utcnow() - timedelta(hours=1),
         )
 
-        request_data = {"username": "username", "password": "password", "token": token}
+        request_data = {"email": "token-test@test.com", "password": "password", "token": token}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert "Invitation link is unavailable" in content
@@ -153,13 +156,13 @@ class SignUpViewTestCase:
             expired_at=datetime.utcnow() - timedelta(hours=1),
         )
 
-        request_data = {"username": "username", "password": "password", "token": token}
+        request_data = {"email": "token-test@test.com", "password": "password", "token": token}
         response = await unauth_client.post(self.path, data=request_data)
         content = await response.text()
         assert "Invitation link is unavailable" in content
 
 
-class CheckAccessTestCase:
+class TestCheckAccessApiView:
     sign_in_url = "/sign-in/"
 
     async def test_get_objects___user_unauth__fail(self, unauth_client, login_required_urls):
@@ -177,8 +180,8 @@ class CheckAccessTestCase:
             "post": unauth_client.post,
         }
         with db_objects.allow_sync():
-            username, password = user_data
-            another_user = User.create(username=username, password=password)
+            email, password = user_data
+            another_user = User.create(email=email, password=password)
 
         make_cookie(unauth_client, {"user": another_user.id})
 
@@ -188,7 +191,7 @@ class CheckAccessTestCase:
             assert response.status == url.status_code, f"Couldn't get expected response for {url}"
 
 
-class CreateInviteTestCase:
+class TestUserInviteApiView:
     path = "/api/auth/invite/"
     test_email = "test@test.com"
 

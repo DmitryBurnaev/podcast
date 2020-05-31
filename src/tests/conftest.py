@@ -26,7 +26,7 @@ from .mocks import MockYoutube, MockRedisClient, MockS3Client
 
 
 def get_user_data() -> Tuple[str, str]:
-    return f"u_{uuid.uuid4().hex}"[:10], "password"
+    return f"u_{uuid.uuid4().hex[:10]}@test.com", "password"
 
 
 def db_allow_sync(func):
@@ -120,8 +120,8 @@ def db_objects():
 @pytest.fixture
 def user(db_objects):
     with db_objects.allow_sync():
-        username, password = get_user_data()
-        yield User.create(username=username, password=password)
+        email, password = get_user_data()
+        yield User.create(email=email, password=password)
 
 
 @pytest.fixture

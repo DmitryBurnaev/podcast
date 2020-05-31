@@ -8,6 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_salt(length=12) -> str:
+    """ Returns a securely generated random string. """
+    allowed_chars = string.ascii_letters + string.digits
+    return "".join(secrets.choice(allowed_chars) for _ in range(length))
+
+
 class PBKDF2PasswordHasher:
     """
     Secure password hashing using the PBKDF2 algorithm (recommended)
@@ -23,7 +29,7 @@ class PBKDF2PasswordHasher:
 
     def encode(self, password: str, salt: str = None) -> str:
         """ Encoding password using random salt + pbkdf2_sha256 """
-        salt = salt or self._salt()
+        salt = salt or get_salt()
         assert password is not None
         assert salt and "$" not in salt
         hash_ = self._pbkdf2(password, salt)
@@ -48,9 +54,3 @@ class PBKDF2PasswordHasher:
         password = bytes(password, encoding="utf-8")
         salt = bytes(salt, encoding="utf-8")
         return hashlib.pbkdf2_hmac(digest().name, password, salt, iterations)
-
-    @staticmethod
-    def _salt(length=12) -> str:
-        """ Returns a securely generated random string. """
-        allowed_chars = string.ascii_letters + string.digits
-        return "".join(secrets.choice(allowed_chars) for _ in range(length))

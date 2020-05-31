@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from logging import Logger
 from typing import List
 
+import peewee_async
 from aiohttp import web
 
 from common.excpetions import InvalidParameterError
@@ -26,6 +27,10 @@ class BaseApiView(web.View):
     @property
     def user(self):
         return self.request.user
+
+    @property
+    def db_objects(self) -> peewee_async.Manager:
+        return self.request.app.objects
 
     async def _get_object(self) -> BaseModel:
         object_id = self.request.match_info.get(self.kwarg_pk)
@@ -91,7 +96,7 @@ class BaseApiView(web.View):
 
         logger_data = copy.copy(cleaned_data)
 
-        for user_sensitive_field in ("password",):
+        for user_sensitive_field in ("password", "password_1", "password_2"):
             if user_sensitive_field in logger_data:
                 logger_data[user_sensitive_field] = "***"
 
@@ -100,8 +105,10 @@ class BaseApiView(web.View):
 
     @staticmethod
     def model_to_dict(instance, fields: List[str] = None, exclude: List[str] = None):
+        """ Serialize model for json-friendly dict """
+
         exclude = exclude or []
-        field_names = fields or list(instance.__class__._meta.sorted_field_names)
+        field_names = fields or list(instance.__class__._meta.sorted_field_names)  # noqa
         res = {}
         for field in filter(lambda x: x not in exclude, field_names):
             value = getattr(instance, field)

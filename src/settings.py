@@ -10,6 +10,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 ENVIRONMENT = os.getenv("ENVIRONMENT", "develop")
 TEST_MODE = ENVIRONMENT == "test" or "test" in sys.argv[0]
+SECRET_KEY = os.getenv("SECRET_KEY", "podcast-project-secret")
 
 db_name = os.getenv("DATABASE_NAME", "podcast")
 if TEST_MODE:
@@ -38,6 +39,9 @@ TMP_IMAGE_PATH = tempfile.mkdtemp(prefix="podcast_images__")
 RESULT_RSS_PATH = os.path.join(PROJECT_ROOT_DIR, "media", "rss")
 TEMPLATE_PATH = os.path.join(BASE_DIR, "templates")
 STATIC_PATH = os.path.join(PROJECT_ROOT_DIR, "static")
+JWT_EXPIRATION = 5 * 60  # 5 min
+JWT_ALGORITHM = "HS512"  # see https://pyjwt.readthedocs.io/en/latest/algorithms.html for details
+RESET_PASSWORD_LINK_EXP = 3 * 60 * 60  # 3 hours
 
 S3_STORAGE_URL = os.getenv("S3_STORAGE_URL")
 S3_AWS_ACCESS_KEY_ID = os.getenv("S3_AWS_ACCESS_KEY_ID")
