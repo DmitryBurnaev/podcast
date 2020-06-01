@@ -92,7 +92,7 @@ class BaseApiView(web.View):
                 raise InvalidParameterError(details=validator.errors)
 
         elif not allow_empty and raise_exception:
-            raise InvalidParameterError("Request body can not be empty")
+            raise InvalidParameterError(details="Request body can not be empty")
 
         logger_data = copy.copy(cleaned_data)
 

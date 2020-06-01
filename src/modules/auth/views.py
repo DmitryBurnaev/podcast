@@ -117,9 +117,9 @@ class SignUpView(BaseAuthView):
         {
             "email": {
                 "type": "string",
-                "minlength": 1,
                 "maxlength": 128,
                 "required": True,
+                "empty": False,
                 "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
             },
             "password_1": {
@@ -225,8 +225,8 @@ class InviteUserAPIView(BaseApiView):
     @login_required
     @errors_api_wrapped
     async def post(self):
-        cleaned_data = await self._validate(allow_empty=True)
-        email = cleaned_data.get("email")
+        cleaned_data = await self._validate()
+        email = cleaned_data["email"]
         token = UserInvite.generate_token()
         expired_at = datetime.utcnow() + timedelta(seconds=self.INVITE_EXPIRATION)
         logger.info("INVITE: create for %s (expired %s) token [%s]", email, expired_at, token)

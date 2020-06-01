@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timedelta
 
+import pytest
+
 import settings
 from modules.auth.models import User, UserInvite
 from .conftest import make_cookie
@@ -59,107 +61,150 @@ class TestSignUpView:
 
     async def test_signup__ok(self, unauth_client, user_data, web_app, user_invite):
         email, password = user_data
-        request_data = {"email": email, "password": password, "token": user_invite.token}
+        request_data = {
+            "email": email,
+            "password_1": password,
+            "password_2": password,
+            "token": user_invite.token,
+        }
         response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
-        assert response.status == 302
-        location = response.headers["Location"]
-        assert str(web_app.router["default_podcast_details"].url_for()) == location
-
-        response = await unauth_client.get(location, allow_redirects=False)
+        content = await response.json()
         assert response.status == 200
-        content = await response.text()
-        assert "podcasts" in content
-
-        user = await web_app.objects.get(User.select().where(User.email == email))
+        assert content["redirect_url"] == str(web_app.router["index"].url_for())
+        user = await User.async_get(web_app.objects, email=email)
         assert user is not None
 
     async def test_signup__check_invite__ok(
         self, web_app, unauth_client, user_data, db_objects, user_invite
     ):
         email, password = user_data
-        request_data = {"email": email, "password": password, "token": user_invite.token}
+        request_data = {
+            "email": email,
+            "password_1": password,
+            "password_2": password,
+            "token": user_invite.token,
+        }
         response = await unauth_client.post(self.path, data=request_data, allow_redirects=False)
-        assert response.status == 302
-        location = response.headers["Location"]
-        assert str(web_app.router["default_podcast_details"].url_for()) == location
+        content = await response.json()
+        assert response.status == 200
+        assert content["redirect_url"] == str(web_app.router["index"].url_for())
 
         user = await User.async_get(db_objects, email=email)
         saved_user_invite = await UserInvite.async_get(db_objects, id=user_invite.id)
-
         assert user is not None
         assert saved_user_invite.user == user
         assert saved_user_invite.is_applied
 
-    async def test_signup__bad_request__check_redirect__fail(self, unauth_client):
-        response = await unauth_client.post(self.path, data={}, allow_redirects=False)
-        assert response.status == 302
-        assert response.headers["Location"] == self.path
-
-    async def test_signup__email_too_large__fail(self, unauth_client):
-        request_data = {"email": "fake_user_" * 30, "password": "password"}
+    @pytest.mark.parametrize(
+        "request_data, error_details",
+        [
+            [
+                {
+                    "email": ("fake_user_" * 30 + "@t.com"),
+                    "password_1": "123456",
+                    "password_2": "123456",
+                    "token": "t",
+                },
+                {"email": ["max length is 128"]},
+            ],
+            [
+                {"email": "", "password_1": "123456", "password_2": "123456", "token": "t"},
+                {"email": ["empty values not allowed"]},
+            ],
+            [
+                {"email": "f@t.com", "password_1": "123456", "token": "t"},
+                {"password_2": ["required field"]},
+            ],
+            [
+                {"email": "f@t.com", "password_1": "header", "password_2": "footer"},
+                {"token": ["required field"]},
+            ],
+            [
+                {"email": "f@t.com", "password_1": "header", "password_2": "footer", "token": "t"},
+                {"password_1": "Passwords must be equal", "password_2": "Passwords must be equal"},
+            ],
+            [
+                {"email": "f@t.com", "password_1": "header", "password_2": "footer", "token": ""},
+                {"token": ["empty values not allowed"]},
+            ],
+        ],
+    )
+    async def test_signup__request_data_invalid__fail(
+        self, unauth_client, request_data, error_details
+    ):
         response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert "Input data is invalid" in content
-        assert "email" in content
-        assert "max length is 128" in content
-
-    async def test_signup__password_missing__fail(self, unauth_client):
-        response = await unauth_client.post(self.path, data={"email": "fake_user"})
-        content = await response.text()
-        assert "password" in content
-        assert "required field" in content
+        content = await response.json()
+        assert content == {"message": "Input data is invalid", "details": error_details}
 
     async def test_signup__user_already_exists__fail(
         self, unauth_client, user_data, web_app, user_invite
     ):
         email, password = user_data
         await web_app.objects.create(User, email=email, password=password)
-        request_data = {"email": email, "password": password, "token": user_invite.token}
+        request_data = {
+            "email": email,
+            "password_1": password,
+            "password_2": password,
+            "token": user_invite.token,
+        }
         response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert f"{email} already exists" in content
-
-    async def test_signup__token_is_blank__fail(self, unauth_client):
-        request_data = {"email": "token-test@test.com", "password": "password", "token": ""}
-        response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert "Input data is invalid: Invite token is missed or incorrect" in content
-
-    async def test_signup__token_is_missed__fail(self, unauth_client):
-        request_data = {"email": "token-test@test.com", "password": "password"}
-        response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert "Input data is invalid: Invite token is missed or incorrect" in content
+        response_data = await response.json()
+        assert response_data == {
+            "message": "Input data is invalid",
+            "details": f"User with email '{email}' already exists",
+        }
 
     async def test_signup__token_is_expired__fail(self, unauth_client, user, db_objects):
         token = f"{uuid.uuid4().hex}"
-        await db_objects.create(
-            UserInvite,
+        await UserInvite.async_create(
+            db_objects,
             email="test@test.com",
             token=token,
             created_by=user,
             expired_at=datetime.utcnow() - timedelta(hours=1),
         )
 
-        request_data = {"email": "token-test@test.com", "password": "password", "token": token}
-        response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert "Invitation link is unavailable" in content
+        response = await unauth_client.post(
+            self.path,
+            data={
+                "email": "token-test@test.com",
+                "password_1": "password",
+                "password_2": "password",
+                "token": token,
+            },
+        )
+        response_data = await response.json()
+        assert response.status == 400
+        assert response_data == {
+            "message": "Input data is invalid",
+            "details": "Invitation link is expired or unavailable",
+        }
 
     async def test_signup__token_is_applied__fail(self, unauth_client, user, db_objects):
         token = f"{uuid.uuid4().hex}"
-        await db_objects.create(
-            UserInvite,
+        await UserInvite.async_create(
+            db_objects,
             email="test@test.com",
             token=token,
             created_by=user,
             expired_at=datetime.utcnow() - timedelta(hours=1),
         )
 
-        request_data = {"email": "token-test@test.com", "password": "password", "token": token}
-        response = await unauth_client.post(self.path, data=request_data)
-        content = await response.text()
-        assert "Invitation link is unavailable" in content
+        response = await unauth_client.post(
+            self.path,
+            data={
+                "email": "token-test@test.com",
+                "password_1": "password",
+                "password_2": "password",
+                "token": token,
+            },
+        )
+        response_data = await response.json()
+        assert response.status == 400
+        assert response_data == {
+            "message": "Input data is invalid",
+            "details": "Invitation link is expired or unavailable",
+        }
 
 
 class TestCheckAccessApiView:
@@ -210,7 +255,7 @@ class TestUserInviteApiView:
         assert response_data["email"] == self.test_email
         assert response_data["created_by"] == user.id
 
-        link = f"{settings.SITE_URL}/sign-up/?invite={created_token.token}"
+        link = f"{settings.SITE_URL}/sign-up/?t={created_token.token}"
         expected_body = (
             f"<p>Hello! :) You have been invited to {settings.SITE_URL}</p>"
             f"<p>Please follow the link </p>"
@@ -222,30 +267,29 @@ class TestUserInviteApiView:
             html_content=expected_body,
         )
 
-    async def test_create_invite__no_email__ok(self, client, user, db_objects, mocked_auth_send):
-        response = await client.post(self.path)
-        with db_objects.allow_sync():
-            created_token: UserInvite = (
-                UserInvite.select().order_by(UserInvite.created_at.desc()).first()
-            )
-
+    @pytest.mark.parametrize(
+        "request_data, error_details",
+        [
+            [
+                {"email": "fake-email"},
+                {
+                    "email": [
+                        "value does not match regex "
+                        "'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$'"
+                    ]
+                },
+            ],
+            [{"email": ""}, {"email": ["empty values not allowed"]}],
+            [{}, "Request body can not be empty"],
+        ],
+    )
+    async def test_create_invite__invalid_request__fail(self, client, request_data, error_details):
+        response = await client.post(self.path, data=request_data)
+        assert response.status == 400
         response_data = await response.json()
-        assert response.status == 201
-        assert response_data["id"] == created_token.id
-        assert response_data["token"] == created_token.token
-        assert response_data["email"] is None
-        assert response_data["created_by"] == user.id
-        assert not mocked_auth_send.called
+        assert response_data == {"message": "Input data is invalid", "details": error_details}
 
     async def test_create_invite__unauth__fail(self, unauth_client):
         response = await unauth_client.post(self.path, allow_redirects=False)
         assert response.status == 302
         assert response.headers["Location"] == "/sign-in/"
-
-    async def test_create_invite__invalid_email__fail(self, client, mocked_auth_send):
-        response = await client.post(self.path, data={"email": "fake email"})
-        response_data = await response.json()
-        assert response.status == 400
-        assert response_data["message"] == "Input data is invalid"
-        assert "email" in response_data["details"]
-        assert not mocked_auth_send.called
