@@ -5,6 +5,7 @@ import pytest
 
 import settings
 from modules.auth.models import User, UserInvite
+from modules.auth.utils import decode_jwt, encode_jwt
 from .conftest import make_cookie
 
 
@@ -263,7 +264,7 @@ class TestUserInviteApiView:
         )
         mocked_auth_send.assert_called_once_with(
             recipient_email=self.test_email,
-            subject="Welcome to podcast.devpython.ru",
+            subject=f"Welcome to {settings.SITE_URL}",
             html_content=expected_body,
         )
 
@@ -293,3 +294,167 @@ class TestUserInviteApiView:
         response = await unauth_client.post(self.path, allow_redirects=False)
         assert response.status == 302
         assert response.headers["Location"] == "/sign-in/"
+
+
+class TestResetPasswordAPIView:
+    path = "/api/auth/reset-password/"
+    test_email = "test@test.com"
+
+    @pytest.mark.parametrize("reset_by", ["id", "email"])
+    async def test_reset_by_email__ok(self, client, user, db_objects, mocked_auth_send, reset_by):
+        if reset_by == "id":
+            data = {"user_id": user.id}
+        else:
+            data = {"email": user.email}
+
+        user.is_superuser = True
+        await user.async_update(db_objects)
+
+        response = await client.post(self.path, json=data)
+        response_data = await response.json()
+        assert response.status == 200
+        token = response_data["token"]
+
+        assert response_data["user_id"] == user.id
+        assert token is not None
+        assert decode_jwt(response_data["token"])["user_id"] == user.id
+
+        link = f"{settings.SITE_URL}/change-password/?t={token}"
+        expected_body = (
+            f"<p>You can reset your password for {settings.SITE_URL}</p>"
+            f"<p>Please follow the link </p>"
+            f"<p><a href={link}>{link}</a></p>"
+        )
+        mocked_auth_send.assert_called_once_with(
+            recipient_email=user.email,
+            subject=f"Welcome back to {settings.SITE_URL}",
+            html_content=expected_body,
+        )
+
+    async def test_user_is_anonymous__fail(self, unauth_client):
+        response = await unauth_client.post(self.path, json={}, allow_redirects=False)
+        assert response.status == 401
+
+    async def test_user_is_not_superuser__fail(self, client, user):
+        response = await client.post(self.path, data={"email": user.email})
+        response_data = await response.json()
+        assert response.status == 403
+        assert response_data == {
+            "details": "Reset password is allowed only for superuser",
+            "message": "You don't have permission to perform this action",
+        }
+
+
+class TestChangePasswordView:
+    path = "/change-password/"
+
+    async def test_get_rendered_page__ok(self, unauth_client, user):
+        token = encode_jwt({"user_id": user.id})
+        response = await unauth_client.get(self.path, params={"t": token})
+        assert response.status == 200
+        content = await response.text()
+        assert token in content
+        assert user.email in content
+
+    async def test_get_rendered_page__token_expired__fail(self, unauth_client, user):
+        token = encode_jwt({"user_id": user.id}, expiration_seconds=-10)
+        response = await unauth_client.get(self.path, params={"t": token})
+        assert response.status == 200
+        content = await response.text()
+        assert token not in content
+        assert "Provided token is missed or incorrect" in content
+
+    async def test_change_password_success__ok(self, unauth_client, user, web_app):
+        token = encode_jwt({"user_id": user.id})
+        new_password = "new123456"
+        response = await unauth_client.post(
+            self.path, data={"token": token, "password_1": new_password, "password_2": new_password}
+        )
+        assert response.status == 200
+        response_data = await response.json()
+        assert response_data["redirect_url"] == str(web_app.router["index"].url_for())
+
+        user = await User.async_get(web_app.objects, id=user.id)
+        assert user.verify_password(new_password)
+
+    @pytest.mark.parametrize(
+        "request_data, error_details",
+        [
+            [{"password_1": "123456", "token": "t"}, {"password_2": ["required field"]}],
+            [{"password_1": "header", "password_2": "footer"}, {"token": ["required field"]}],
+            [
+                {"password_1": "header", "password_2": "footer", "token": "t"},
+                {"password_1": "Passwords must be equal", "password_2": "Passwords must be equal"},
+            ],
+            [
+                {"password_1": "header", "password_2": "footer", "token": ""},
+                {"token": ["empty values not allowed"]},
+            ],
+        ],
+    )
+    async def test_invalid_request__fail(self, unauth_client, request_data, error_details):
+        response = await unauth_client.post(self.path, data=request_data)
+        assert response.status == 400
+        response_data = await response.json()
+        assert response_data == {"message": "Input data is invalid", "details": error_details}
+
+    async def test_token_expired__fail(self, unauth_client, user):
+        token = encode_jwt({"user_id": user.id}, expiration_seconds=-10)
+        new_password = "new123456"
+        response = await unauth_client.post(
+            self.path, data={"token": token, "password_1": new_password, "password_2": new_password}
+        )
+        assert response.status == 401
+        response_data = await response.json()
+        assert response_data == {
+            "details": "Invalid token header. Token could not be decoded as JWT.",
+            "message": "Authentication credentials are invalid",
+        }
+
+    async def test_token_invalid__fail(self, unauth_client, user):
+        token = encode_jwt({"user_id": user.id}) + "fake-post"
+        new_password = "new123456"
+        response = await unauth_client.post(
+            self.path, data={"token": token, "password_1": new_password, "password_2": new_password}
+        )
+        assert response.status == 401
+        response_data = await response.json()
+        assert response_data == {
+            "details": "Invalid token header. Token could not be decoded as JWT.",
+            "message": "Authentication credentials are invalid",
+        }
+
+    async def test_user_inactive__fail(self, unauth_client, user, db_objects):
+        user.is_active = False
+        await user.async_update(db_objects)
+        token = encode_jwt({"user_id": user.id})
+        new_password = "new123456"
+        response = await unauth_client.post(
+            self.path, data={"token": token, "password_1": new_password, "password_2": new_password}
+        )
+        assert response.status == 401
+        response_data = await response.json()
+        assert response_data == {
+            "message": "Authentication credentials are invalid",
+            "details": f"Active user #{user.id} not found or token is invalid.",
+        }
+
+    async def test_user_does_not_exist__fail(self, unauth_client, user, db_objects):
+        user_id = "fake-user-id"
+        token = encode_jwt({"user_id": user_id})
+        new_password = "new123456"
+        response = await unauth_client.post(
+            self.path, data={"token": token, "password_1": new_password, "password_2": new_password}
+        )
+        assert response.status == 401
+        response_data = await response.json()
+        assert response_data == {
+            "message": "Authentication credentials are invalid",
+            "details": f"Active user #{user_id} not found or token is invalid.",
+        }
+
+    async def test_user_already_authenticated__fail(self, client, web_app):
+        response = await client.post(self.path, data={}, allow_redirects=False)
+        assert response.status == 302
+        location = response.headers["Location"]
+        assert str(web_app.router["sign_out"].url_for()), location

@@ -3,7 +3,7 @@ class BaseApplicationError(Exception):
     details = None
     status_code = 500
 
-    def __init__(self, message=None, details=None, redirect_url: str = None):
+    def __init__(self, message=None, details=None):
         self.message = message or self.message
         self.details = details or self.details
 
@@ -11,6 +11,11 @@ class BaseApplicationError(Exception):
 class AuthenticationFailedError(BaseApplicationError):
     status_code = 401
     message = "Authentication credentials are invalid"
+
+
+class AuthenticationRequiredError(BaseApplicationError):
+    status_code = 401
+    message = "Authentication is required"
 
 
 class InviteTokenInvalidationError(BaseApplicationError):
