@@ -9,7 +9,6 @@ def encode_jwt(payload: dict, expiration_seconds: int = 0) -> str:
 
     if expiration_seconds:
         payload["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=expiration_seconds)
-
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM).decode()
 
 

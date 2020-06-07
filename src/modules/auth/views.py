@@ -27,6 +27,7 @@ from common.decorators import (
     errors_wrapped,
     errors_api_wrapped,
     json_response,
+    login_api_required,
 )
 from modules.auth.utils import encode_jwt, decode_jwt
 from modules.podcast.models import Podcast
@@ -254,7 +255,7 @@ class InviteUserAPIView(BaseApiView):
         )
         await send_email(
             recipient_email=user_invite.email,
-            subject="Welcome to podcast.devpython.ru",
+            subject=f"Welcome to {settings.SITE_URL}",
             html_content=body.strip(),
         )
 
@@ -276,8 +277,8 @@ class ResetPasswordAPIView(BaseApiView):
     INVITE_EXPIRED_DAYS = 30
 
     @json_response
-    @login_required
     @errors_api_wrapped
+    @login_api_required
     async def post(self):
         db_objects = self.request.app.objects
         cleaned_data = await self._validate(allow_empty=True)
@@ -315,7 +316,7 @@ class ResetPasswordAPIView(BaseApiView):
         )
         await send_email(
             recipient_email=user.email,
-            subject="Welcome back to podcast.devpython.ru",
+            subject=f"Welcome back to {settings.SITE_URL}",
             html_content=body.strip(),
         )
 
@@ -396,9 +397,13 @@ class ChangePasswordView(BaseAuthView):
             logger.exception("Bad jwt token: %s", err)
             raise AuthenticationFailedError(details=msg)
 
+        user_id = str(jwt_payload.get("user_id", 0))
         try:
+            assert user_id.isdigit()
             user = await User.async_get(db_objects, id=jwt_payload["user_id"], is_active=True)
-        except User.DoesNotExist:
-            raise AuthenticationFailedError(details=_("Active user not found or token is invalid."))
+        except (AssertionError, User.DoesNotExist):
+            raise AuthenticationFailedError(
+                details=f"Active user #{user_id} not found or token is invalid."
+            )
 
         return user
