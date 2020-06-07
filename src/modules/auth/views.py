@@ -127,15 +127,13 @@ class SignUpView(BaseAuthView):
                 "type": "string",
                 "minlength": 6,
                 "maxlength": 32,
-                "required": True,
-                "regex": "^\w+$",
+                "required": True
             },
             "password_2": {
                 "type": "string",
                 "minlength": 6,
                 "maxlength": 32,
-                "required": True,
-                "regex": "^\w+$",
+                "required": True
             },
             "token": {"type": "string", "required": True, "empty": False},
         }
@@ -343,14 +341,12 @@ class ChangePasswordView(BaseAuthView):
                 "minlength": 6,
                 "maxlength": 32,
                 "required": True,
-                "regex": "^\w+$",
             },
             "password_2": {
                 "type": "string",
                 "minlength": 6,
                 "maxlength": 32,
                 "required": True,
-                "regex": "^\w+$",
             },
             "token": {"type": "string", "empty": False, "required": True},
         }
