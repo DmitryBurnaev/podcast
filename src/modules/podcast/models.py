@@ -1,11 +1,13 @@
 import uuid
 from _md5 import md5
+from urllib.parse import urljoin
 from xml.sax.saxutils import escape
 
 import peewee
 from datetime import datetime
 import peewee_async
 
+import settings
 from app_i18n import aiohttp_translations
 from modules.auth.models import User
 from common.models import BaseModel
@@ -21,12 +23,12 @@ class Podcast(BaseModel):
     publish_id = peewee.CharField(unique=True, index=True, max_length=32, null=False)
     name = peewee.CharField(index=True, max_length=256, null=False)
     description = peewee.TextField(null=True)
-    logo_path = peewee.CharField(max_length=256, null=True)
     created_at = peewee.DateTimeField(default=datetime.utcnow, null=False)
     updated_at = peewee.DateTimeField(default=datetime.utcnow, null=False)
     created_by = peewee.ForeignKeyField(User, related_name="podcasts")
     download_automatically = peewee.BooleanField(default=True)
     rss_link = peewee.CharField(max_length=128, null=True)
+    image_url = peewee.CharField(max_length=512, null=True)
 
     class Meta:
         order_by = ("created_at",)
@@ -34,6 +36,13 @@ class Podcast(BaseModel):
 
     def __str__(self):
         return f'<Podcast #{self.id} "{self.name}">'
+
+    @property
+    def safe_image_url(self) -> str:
+        image_url = self.image_url
+        if not image_url:
+            image_url = urljoin(settings.S3_STORAGE_URL, settings.S3_DEFAULT_PODCAST_IMAGE)
+        return image_url
 
     @classmethod
     async def get_all(cls, objects, request_user_id):

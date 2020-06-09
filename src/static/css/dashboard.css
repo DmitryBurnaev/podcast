@@ -181,6 +181,7 @@ a.text-black-link:hover{
     height: 250px;
     background-color: #e4e4e4;
     background-size: cover;
+    background-position: center;
 }
 .episode-item{
     min-height: 70px;

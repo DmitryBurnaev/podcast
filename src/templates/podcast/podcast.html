@@ -26,7 +26,7 @@
     <div class="row">
         {% if not mobile_app_web_view %}
         <div class="col-md-3 text-center">
-            <img src="{% if podcast.logo_path %}{{ static(podcast.logo_path) }} {% else %}{{ static('images/cover-default.jpg') }}{% endif %}" alt="podcast" class="img-thumbnail mb-3">
+            <img src="{{ podcast.safe_image_url }}" alt="podcast" class="img-thumbnail mb-3">
         </div>
         {% endif %}
         <div class="col-md-9">

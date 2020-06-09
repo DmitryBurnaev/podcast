@@ -123,18 +123,8 @@ class SignUpView(BaseAuthView):
                 "empty": False,
                 "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
             },
-            "password_1": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 32,
-                "required": True
-            },
-            "password_2": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 32,
-                "required": True
-            },
+            "password_1": {"type": "string", "minlength": 6, "maxlength": 32, "required": True},
+            "password_2": {"type": "string", "minlength": 6, "maxlength": 32, "required": True},
             "token": {"type": "string", "required": True, "empty": False},
         }
     )
@@ -336,18 +326,8 @@ class ChangePasswordView(BaseAuthView):
     model_class = User
     validator = Validator(
         {
-            "password_1": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 32,
-                "required": True,
-            },
-            "password_2": {
-                "type": "string",
-                "minlength": 6,
-                "maxlength": 32,
-                "required": True,
-            },
+            "password_1": {"type": "string", "minlength": 6, "maxlength": 32, "required": True},
+            "password_2": {"type": "string", "minlength": 6, "maxlength": 32, "required": True},
             "token": {"type": "string", "empty": False, "required": True},
         }
     )

@@ -26,7 +26,7 @@
         {% for podcast in podcasts %}
             <div class="media text-muted pt-2 hide-text-content border-bottom border-gray podcast-item">
                 <a href="{{ url('podcast_details', podcast_id=podcast.id) }}">
-                    <img class="podcast-cover-small rounded float-left" src="{% if podcast.logo_path %}{{ static(podcast.logo_path) }} {% else %}{{ static('images/cover-default.jpg') }}{% endif %}" alt="podcast">
+                    <img class="podcast-cover-small rounded float-left" src="{{ podcast.safe_image_url }}" alt="podcast">
                 </a>
                 <p class="media-body pb-3 mb-0 small lh-125 text-justify">
                     <strong class="d-block text-gray-dark"><a class="text-black-link" href="{{ url('podcast_details', podcast_id=podcast.id) }}">{{ podcast.name }}</a></strong>
