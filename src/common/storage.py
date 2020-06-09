@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import mimetypes
 import os
 from functools import partial
 from typing import Callable, List, Optional, Tuple
@@ -79,6 +80,7 @@ class StorageS3:
     ) -> Optional[str]:
         """ Upload file to S3 storage """
 
+        mimetype, _ = mimetypes.guess_type(src_path)
         dst_path = os.path.join(remote_path, filename)
         code, result = self.__call(
             self.s3.upload_file,
@@ -86,7 +88,7 @@ class StorageS3:
             Bucket=settings.S3_BUCKET_NAME,
             Key=dst_path,
             Callback=callback,
-            ExtraArgs={"ACL": "public-read"},
+            ExtraArgs={"ACL": "public-read", "ContentType": mimetype},
         )
         if code != self.CODE_OK:
             return None
