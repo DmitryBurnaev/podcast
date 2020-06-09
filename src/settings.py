@@ -50,6 +50,9 @@ S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "podcast")
 S3_BUCKET_AUDIO_PATH = os.getenv("S3_BUCKET_AUDIO_PATH", "audio/")
 S3_BUCKET_RSS_PATH = os.getenv("S3_BUCKET_RSS_PATH", "rss/")
 S3_BUCKET_IMAGES_PATH = os.getenv("S3_BUCKET_IMAGES_PATH", "images/")
+S3_DEFAULT_PODCAST_IMAGE = os.path.join(
+    S3_BUCKET_NAME, S3_BUCKET_IMAGES_PATH, "podcast-default.jpg"
+)
 
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 SENDGRID_API_VERSION = "v3"
