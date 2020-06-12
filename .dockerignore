@@ -4,4 +4,5 @@ venv/
 static/
 media/
 .*
+!.flake8
 !.env

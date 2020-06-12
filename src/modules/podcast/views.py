@@ -143,7 +143,7 @@ class PodcastDeleteApiView(BasePodcastApiView):
         files_to_skip = exist_file_names & podcast_file_names
         if files_to_skip:
             self.logger.warning(
-                f"There are another episodes with files %s. Skip this files removing.",
+                "There are another episodes with files %s. Skip this files removing.",
                 files_to_skip,
             )
 

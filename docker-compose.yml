@@ -1,35 +1,42 @@
 version: '3'
 services:
-    web:
-        image:
-            podcast
-        build:
-            context: .
-            dockerfile: Dockerfile
-        env_file:
-            - .env
-        environment:
-            - ENV=web
-        ports:
-            - 127.0.0.1:${APP_PORT}:8000
-        volumes:
-            - ${PWD}/static:/podcast/static
-        networks:
-            - internal-subnet
+  web:
+    image: podcast
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=web
+    ports:
+      - 127.0.0.1:${APP_PORT}:8000
+    volumes:
+      - ${PWD}/static:/podcast/static
+    networks:
+      - internal-subnet
 
-    rq:
-        image:
-            podcast
-        build:
-            context: .
-            dockerfile: Dockerfile
-        env_file:
-            - .env
-        environment:
-            - ENV=rq
-        networks:
-            - internal-subnet
+  rq:
+    image: podcast
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=rq
+    networks:
+      - internal-subnet
+
+  test:
+    image: podcast
+    build:
+      context: .
+      args:
+        DEV_DEPS: "true"
+    env_file:
+      - .env
+    environment:
+      - APP_SERVICE=test
 
 networks:
-    internal-subnet:
-        external: true
+  internal-subnet:
+    external: true

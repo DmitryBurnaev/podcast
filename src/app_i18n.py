@@ -4,9 +4,8 @@ import aiohttp_i18n.i18n
 import settings
 
 
-# noinspection PyProtectedMember
 # TODO: escape from using `aiohttp_i18n.i18n`
-class AioHttpGettextTranslations(aiohttp_i18n.i18n._GettextTranslations):
+class AioHttpGettextTranslations(aiohttp_i18n.i18n._GettextTranslations): # noqa
     """ This singleton extends logic for jinja2 i18n support of _GettextTranslations """
 
     __instance = None

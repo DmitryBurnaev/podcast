@@ -1,18 +1,28 @@
 #!/bin/sh
 
-cd /podcast/src && python -m migrations apply
+cd /podcast/src && python -m migrations upgrade
 
 
-if [ "${ENV}" = "web" ]
+if [ "${APP_SERVICE}" = "web" ]
   then
     cd /podcast/src && \
     python -m collectstatic && \
-    python -m migrations upgrade && \
     gunicorn app:create_app --bind 0.0.0.0:8000 --worker-class aiohttp.GunicornWebWorker --user podcast
 
-elif [ "${ENV}" = "rq" ]
+elif [ "${APP_SERVICE}" = "rq" ]
   then
-    cd /podcast/src && python -m rq_worker youtube_downloads --user podcast
+    cd /podcast/src && \
+    python -m rq_worker youtube_downloads --user podcast
+
+elif [ "${APP_SERVICE}" = "test" ]
+  then
+    cd /podcast &&
+    flake8 --count && \
+    cd src && \
+
+    coverage run --source="modules/" -m pytest --aiohttp-fast --aiohttp-loop=uvloop && \
+    coverage report
+
 else
   echo "ENV environment variable is unexpected or was not provided (ENV='${ENV}')" >&2
   kill -s SIGINT 1
