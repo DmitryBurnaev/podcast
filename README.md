@@ -9,7 +9,7 @@ which are downloaded from other resources (from Youtube for example):
 + [Install Project](#install-project)
 + [Run Project](#run-project)
 + [Useful Commands](#useful-commands)
-+ [Env Variables](#environments)
++ [Env Variables](#environment-variables)
 + [Localisation](#localisation)
 + [License](#license)
 
@@ -128,27 +128,36 @@ make test
 make lint
 ```
 
+## Environment Variables
 
-### Environments
+### REQUIRED Variables
 
-| argument | description | example |
-|:------------- |:-------------:| ------:|
-| ENVIRONMENT| Environment name (for run in container: `web`/`rq`) | web|
-| APP_DEBUG| Run app in async debug mode | 0 |
-| APP_PORT| App default port running (used by docker compose) | 8000|
-| APP_HOST| App default host running (used by docker compose) | 0.0.0.0|
-| LOG_LEVEL| Current logging level | DEBUG|
-| SECRET_KEY| Is used for encoding secrets | _abc3412df_|
-| SITE_URL| Your URL address (is used for full url to media files) | http://podcast.site.com|
-| DATABASE_HOST| PostgresSQL database host | 127.0.0.1|
-| DATABASE_PORT| PostgresSQL database port | 5432|
-| DATABASE_NAME | PostgresSQL database name | podcast|
-| DATABASE_NAME_TEST | PostgresSQL database name (for test running) | podcast_test|
-| DATABASE_USER| PostgresSQL database username | podcast|
-| DATABASE_PASSWORD| PostgresSQL database password | podcast|
-| REDIS_HOST| Redis host | localhost|
-| REDIS_PORT| Redis port | 6379|
-| SENTRY_DSN| Sentry dsn secret (collect app errors) | _abc3412jsdb345j4b21jfdf_|
+| argument                  | description                                       | example               |
+|:------------------------- |:-------------------------------------------------:| ---------------------:|
+| APP_HOST                  | App default host running (used by docker compose) | 127.0.0.1             |
+| APP_PORT                  | App default port running (used by docker compose) | 9000                  |
+| APP_SERVICE               | Run service (web/celery/test) via entrypoint.sh   | web                   |
+| SECRET_KEY                | Django secret key (security)                      | _abc3412j345j1f2d3f_  |
+| SITE_URL                  | Your URL address (is used for email links)        | http://podcast.st.com |
+| DATABASE_DB_HOST          | PostgreSQL database host                          | 127.0.0.1             |
+| DATABASE_DB_PORT          | PostgreSQL database port                          | 5432                  |
+| DATABASE_DB_NAME          | PostgreSQL database name                          | polls                 |
+| DATABASE_DB_USER          | PostgreSQL database username                      | polls                 |
+| DATABASE_DB_PASSWORD      | PostgreSQL database password                      | polls_asf2342         |
+| DATABASE_NAME_TEST        | PostgreSQL database name (for test running)       | podcast_test|
+
+### OPTIONAL Variables
+
+| argument                  | description                                       | default               |
+|:------------------------- |:-------------------------------------------------:| ---------------------:|
+| APP_DEBUG                 | run app in debug mode                             | False                 |
+| ALLOWED_HOSTS             | Django specific Allowed hosts (comma separated)   | localhost             |
+| LOG_LEVEL                 | Allows to set current logging level               | DEBUG                 |
+| LOG_PRODUCTION_MODE       | Format and detail log records for production      | False                 |
+| DISABLE_LOG               | Allows to disable all logs                        | False                 |
+| SENTRY_DSN                | Sentry dsn (if not set, error logs won't be sent) | _abc3412jsdb345jfdf_  |
+| REDIS_HOST                | Redis host                                        | localhost             |
+| REDIS_PORT                | Redis port                                        | 6379                  |
 
 * * *
 

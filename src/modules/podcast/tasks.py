@@ -20,12 +20,12 @@ def _update_all_rss(source_id: str):
     """ Allows to regenerate rss for all podcasts with requested episode (by source_id) """
 
     logger.info(
-        f"Episodes with source #%s: updating rss for all podcasts included for", source_id,
+        "Episodes with source #%s: updating rss for all podcasts included for", source_id,
     )
 
     affected_episodes = list(Episode.select(Episode.podcast).where(Episode.source_id == source_id))
     podcast_ids = [episode.podcast_id for episode in affected_episodes]
-    logger.info(f"Found podcasts for rss updates: %s", podcast_ids)
+    logger.info("Found podcasts for rss updates: %s", podcast_ids)
 
     for podcast_id in podcast_ids:
         generate_rss(podcast_id)
@@ -85,7 +85,7 @@ def download_episode(youtube_link: str, episode_id: int):
         StorageS3().delete_file(episode.file_name)
 
     logger.info(
-        f"[%s] Mark all episodes with source_id [%s] as downloading.",
+        "[%s] Mark all episodes with source_id [%s] as downloading.",
         episode.source_id,
         episode.source_id,
     )
