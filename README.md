@@ -151,10 +151,7 @@ make lint
 | argument                  | description                                       | default               |
 |:------------------------- |:-------------------------------------------------:| ---------------------:|
 | APP_DEBUG                 | run app in debug mode                             | False                 |
-| ALLOWED_HOSTS             | Django specific Allowed hosts (comma separated)   | localhost             |
 | LOG_LEVEL                 | Allows to set current logging level               | DEBUG                 |
-| LOG_PRODUCTION_MODE       | Format and detail log records for production      | False                 |
-| DISABLE_LOG               | Allows to disable all logs                        | False                 |
 | SENTRY_DSN                | Sentry dsn (if not set, error logs won't be sent) | _abc3412jsdb345jfdf_  |
 | REDIS_HOST                | Redis host                                        | localhost             |
 | REDIS_PORT                | Redis port                                        | 6379                  |
