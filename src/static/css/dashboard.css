@@ -244,3 +244,9 @@ a.text-black-link:hover{
         /*min-width: 95%;*/
     /*}*/
 }
+.check-icon{
+    padding-top: 4px;
+}
+.playlist-control-box{
+    width: 35px;
+}

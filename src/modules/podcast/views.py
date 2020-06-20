@@ -1,23 +1,32 @@
 import asyncio
+import http
 import re
 from abc import ABC
 from functools import partial
 from typing import List, Iterable
+import logging
 
 import aiohttp_jinja2
 import peewee
 from aiohttp import web
 from cerberus import Validator
+import youtube_dl
 
 from app_i18n import aiohttp_translations
 from common.storage import StorageS3
 from modules.youtube.exceptions import YoutubeExtractInfoError
 
 import settings
-from common.decorators import login_required, errors_wrapped, json_response
-from common.excpetions import YoutubeFetchError
+from common.decorators import (
+    login_required,
+    errors_wrapped,
+    json_response,
+    login_api_required,
+    errors_api_wrapped,
+)
+from common.excpetions import YoutubeFetchError, InvalidParameterError
 from common.models import BaseModel
-from common.utils import redirect, add_message, is_mobile_app
+from common.utils import redirect, add_message, is_mobile_app, cut_string
 from common.views import BaseApiView
 from modules.podcast import tasks
 from modules.podcast.models import Podcast, Episode
@@ -27,6 +36,7 @@ from modules.podcast.utils import check_state
 
 
 _ = aiohttp_translations.gettext
+logger = logging.getLogger(__name__)
 
 
 class BasePodcastApiView(BaseApiView, ABC):
@@ -501,3 +511,53 @@ class ProgressApiView(web.View):
             progress = []
 
         return web.json_response({"progress": progress})
+
+
+class PodcastPlayListView(BasePodcastApiView):
+    template_name = "podcast/playlist.html"
+    model_class = Podcast
+    kwarg_pk = "podcast_id"
+
+    @login_required
+    @aiohttp_jinja2.template(template_name)
+    async def get(self):
+        podcast: Podcast = await self._get_object()
+        return {"podcast": podcast}
+
+
+class PlayListVideosApiView(BaseApiView):
+    model_class = None
+    validator = Validator({"playlist_url": {"type": "string", "required": False}})
+
+    @json_response
+    @errors_api_wrapped
+    @login_api_required
+    async def post(self):
+        cleaned_data = await self._validate(allow_empty=True)
+        playlist_url = cleaned_data.get("playlist_url")
+        loop = asyncio.get_running_loop()
+
+        with youtube_dl.YoutubeDL({"logger": self.logger, "noplaylist": False}) as ydl:
+            extract_info = partial(ydl.extract_info, playlist_url, download=False)
+            youtube_details = await loop.run_in_executor(None, extract_info)
+
+        yt_content_type = youtube_details.get("_type")
+        if not yt_content_type == "playlist":
+            logger.warning("Unknown type of returned youtube details: %s", yt_content_type)
+            logger.debug("Returned info: {%s}", youtube_details)
+            raise InvalidParameterError(
+                details=f"It seems like incorrect playlist. {yt_content_type=}"
+            )
+
+        entries = [
+            {
+                "id": video["id"],
+                "title": video["title"],
+                "description": cut_string(video["description"], 200),
+                "thumbnail_url": video["thumbnails"][0]["url"] if video.get("thumbnails") else "",
+                "url": video["webpage_url"],
+            }
+            for video in youtube_details["entries"]
+        ]
+        res = {"id": youtube_details["id"], "title": youtube_details["title"], "entries": entries}
+        return res, http.HTTPStatus.OK
