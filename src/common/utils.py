@@ -100,3 +100,21 @@ async def send_email(recipient_email: str, subject: str, html_content: str):
                 request_logger.info(
                     "Email sent to %s. Status code: %s", recipient_email, response.status
                 )
+
+
+def cut_string(source_string: str, max_length: int, finish_seq: str = "...") -> str:
+    """
+    Allows to limit source_string and append required sequence
+
+    >>> cut_string('Some long string', max_length=13)
+    'Some long ...'
+    >>> cut_string('Some long string', max_length=8, finish_seq="***")
+    'Some ***'
+    >>> cut_string('Some long string', max_length=1)
+    ''
+    """
+    if len(source_string) > max_length:
+        slice_length = max_length - len(finish_seq)
+        return source_string[:slice_length] + finish_seq if (slice_length > 0) else ""
+
+    return source_string

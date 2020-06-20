@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block breadcrumbs %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">{% trans %}Dashboard{% endtrans %}</a></li>
+        <li class="breadcrumb-item"><a href="{{ url('podcast_list') }}">{% trans %}podcasts{% endtrans %}</a></li>
+        <li class="breadcrumb-item"><a href="{{ url('podcast_details', podcast_id=podcast.id) }}">{{ podcast.name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">PlayList loading</li>
+    </ol>
+{% endblock %}
+
+{% block extra_scripts%}
+<script src="{{ static('js/jquery.tmpl.js') }}"></script>
+<script src="{{ static('js/playlist.js') }}"></script>
+
+{% endblock %}
+
+{% block content %}
+    {% raw %}
+    <script id="playlistTemplate" type="text/x-jquery-tmpl">
+        <div data-video-id="${id}" class="media text-muted pt-2 hide-text-content  border-bottom border-gray episode-item">
+            <div class="playlist-control-box text-center">
+                <input checked="1" name="check-video" type="checkbox" class="check-video" data-video-id="${id}" data-video-url="${url}" />
+                <small class="d-block text-center text-info check-icon" id="statusIconVideo_${id}" >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round"
+                         class="feather feather-check-circle"
+                         hidden="true"
+                    >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </small>
+            </div>
+            <a href="${url}">
+                <img class="podcast-cover-small rounded float-left "
+                     src="${thumbnail_url}"
+                     alt="podcast cover"
+                     onerror="this.src='/static/images/cover-default.jpg'">
+            </a>
+            <p class="media-body pb-3 mb-0 small lh-125 text-justify">
+                <strong class="d-block text-gray-dark">
+                    <a class="text-black-link" href="${url}" target="_blank">${title}</a>
+                </strong>
+                ${description}
+            </p>
+
+        </div>
+
+    </script>
+    {% endraw %}
+
+
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h3 class="h3 caption">{{ podcast.name }}</h3>
+    </div>
+
+    <form class="form-inline" id="playlistURLFormID" action="{{ url('api_playlist') }}" method="post">
+        <div class="form-group row no-margin-left">
+            <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12 no-padding-left no-padding-right">
+                <input type="text" class="form-control" id="youtubeLink" name="youtube_link" placeholder="{% trans %}Youtube PlayList Link{% endtrans %}" autofocus>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-12 col-xs-12 no-padding-right small-screen-no-padding">
+                <button type="submit" class="btn btn-info no-padding-left">{% trans %}Load PlayList{% endtrans %}</button>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-12 col-xs-12 no-padding-right small-screen-no-padding">
+                <button type="button" id="createPlaylistEpisodes" class="btn btn-info no-padding-left" data-podcast-id="{{ podcast.id }}" disabled>{% trans %}Create Episodes{% endtrans %}</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="my-3 pt-3 pl-3 pr-3 pb-3 bg-white rounded shadow-sm">
+
+        <h6 class="border-bottom border-gray pb-2 mb-3">{% trans %}PLayList items{% endtrans %}</h6>
+
+        <div id="dynamicPlaylistContent">{% trans %}Waiting...{% endtrans %}</div>
+        <div id="loader" hidden> <img style="width: 40px; margin-top: 10px" src="{{ static('images/preloader.gif') }}"> </div>
+
+    </div>
+
+{% endblock %}
