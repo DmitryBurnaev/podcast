@@ -1,4 +1,15 @@
-# Custom Podcasts
+# Old version of Podcasts APP
+
+This is old (and not supported) version for podcast APP. <br/>
+New version consists from that parts:
++ [podcast-service (backend)](https://github.com/DmitryBurnaev/podcast-service)
++ [podcast-ui (frontend)](https://github.com/DmitryBurnaev/podcast-ui)
++ [podcast-ios (mobile APP)](https://github.com/DmitryBurnaev/podcast-ios)
+
+<hr>
+
+# Project details
+
 AIOHttp based application for creation and moderation your own podcasts with episodes 
 which are downloaded from other resources (from Youtube for example):
 
