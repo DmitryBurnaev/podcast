@@ -1,4 +1,4 @@
-FROM python:3.8-slim-buster
+FROM python:3.10-slim-buster
 WORKDIR /podcast
 ARG DEV_DEPS
 
@@ -16,7 +16,7 @@ RUN apt-get update \
 	&& wget https://github.com/vot/ffbinaries-prebuilt/releases/download/v4.1/ffmpeg-4.1-linux-64.zip -q -O /tmp/ffmpeg-4.1-linux-64.zip \
 	&& unzip /tmp/ffmpeg-4.1-linux-64.zip -d /usr/bin \
 	&& rm /tmp/ffmpeg-4.1-linux-64.zip \
-	&& pip install pipenv \
+	&& pip install pipenv==2023.7.23 \
 	&& if [ ${DEV_DEPS} = "true" ]; then \
 	     echo "=== Install DEV dependencies ===" && \
 	     pipenv install --dev --system; \
