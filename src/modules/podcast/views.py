@@ -10,7 +10,7 @@ import aiohttp_jinja2
 import peewee
 from aiohttp import web
 from cerberus import Validator
-import youtube_dl
+import yt_dlp
 
 from app_i18n import aiohttp_translations
 from common.storage import StorageS3
@@ -537,7 +537,7 @@ class PlayListVideosApiView(BaseApiView):
         playlist_url = cleaned_data.get("playlist_url")
         loop = asyncio.get_running_loop()
 
-        with youtube_dl.YoutubeDL({"logger": self.logger, "noplaylist": False}) as ydl:
+        with yt_dlp.YoutubeDL({"logger": self.logger, "noplaylist": False}) as ydl:
             extract_info = partial(ydl.extract_info, playlist_url, download=False)
             youtube_details = await loop.run_in_executor(None, extract_info)
 
