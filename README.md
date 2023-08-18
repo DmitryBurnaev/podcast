@@ -143,29 +143,29 @@ make lint
 
 ### REQUIRED Variables
 
-| argument                  | description                                       | example               |
-|:------------------------- |:-------------------------------------------------:| ---------------------:|
-| APP_HOST                  | App default host running (used by docker compose) | 127.0.0.1             |
-| APP_PORT                  | App default port running (used by docker compose) | 9000                  |
-| APP_SERVICE               | Run service (web/celery/test) via entrypoint.sh   | web                   |
-| SECRET_KEY                | Django secret key (security)                      | _abc3412j345j1f2d3f_  |
-| SITE_URL                  | Your URL address (is used for email links)        | http://podcast.st.com |
-| DATABASE_DB_HOST          | PostgreSQL database host                          | 127.0.0.1             |
-| DATABASE_DB_PORT          | PostgreSQL database port                          | 5432                  |
-| DATABASE_DB_NAME          | PostgreSQL database name                          | polls                 |
-| DATABASE_DB_USER          | PostgreSQL database username                      | polls                 |
-| DATABASE_DB_PASSWORD      | PostgreSQL database password                      | polls_asf2342         |
-| DATABASE_NAME_TEST        | PostgreSQL database name (for test running)       | podcast_test|
+| argument             |                    description                    |               example |
+|:---------------------|:-------------------------------------------------:|----------------------:|
+| APP_HOST             | App default host running (used by docker compose) |             127.0.0.1 |
+| APP_PORT             | App default port running (used by docker compose) |                  9000 |
+| APP_SERVICE          |  Run service (web/celery/test) via entrypoint.sh  |                   web |
+| SECRET_KEY           |           Django secret key (security)            |  _abc3412j345j1f2d3f_ |
+| SITE_URL             |    Your URL address (is used for email links)     | http://podcast.st.com |
+| DATABASE_DB_HOST     |             PostgreSQL database host              |             127.0.0.1 |
+| DATABASE_DB_PORT     |             PostgreSQL database port              |                  5432 |
+| DATABASE_DB_NAME     |             PostgreSQL database name              |                 polls |
+| DATABASE_DB_USER     |           PostgreSQL database username            |                 polls |
+| DATABASE_DB_PASSWORD |           PostgreSQL database password            |         polls_asf2342 |
+| DATABASE_NAME_TEST   |    PostgreSQL database name (for test running)    |          podcast_test |
 
 ### OPTIONAL Variables
 
-| argument                  | description                                       | default               |
-|:------------------------- |:-------------------------------------------------:| ---------------------:|
-| APP_DEBUG                 | run app in debug mode                             | False                 |
-| LOG_LEVEL                 | Allows to set current logging level               | DEBUG                 |
-| SENTRY_DSN                | Sentry dsn (if not set, error logs won't be sent) | _abc3412jsdb345jfdf_  |
-| REDIS_HOST                | Redis host                                        | localhost             |
-| REDIS_PORT                | Redis port                                        | 6379                  |
+| argument   |                    description                    |              default |
+|:-----------|:-------------------------------------------------:|---------------------:|
+| APP_DEBUG  |               run app in debug mode               |                False |
+| LOG_LEVEL  |        Allows to set current logging level        |                DEBUG |
+| SENTRY_DSN | Sentry dsn (if not set, error logs won't be sent) | _abc3412jsdb345jfdf_ |
+| REDIS_HOST |                    Redis host                     |            localhost |
+| REDIS_PORT |                    Redis port                     |                 6379 |
 
 * * *
 

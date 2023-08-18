@@ -54,7 +54,7 @@ async def create_app() -> PodcastWebApp:
     middlewares = [
         session_middleware(session_engine),
         request_user_middleware,
-        aiohttp_i18n.babel_middleware(),
+        aiohttp_i18n.babel_middleware,
     ]
 
     if settings.DEBUG:

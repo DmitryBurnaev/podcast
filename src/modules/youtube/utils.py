@@ -5,7 +5,7 @@ import subprocess
 from functools import partial
 from typing import Optional, NamedTuple
 
-import youtube_dl
+import yt_dlp
 
 import settings
 from modules.youtube.exceptions import YoutubeExtractInfoError, FFMPegPreparationError
@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 
 
 class YoutubeInfo(NamedTuple):
-    """ Structure of extended information about youtube video """
+    """ Structure of extended information about dyoutube video """
 
     watch_url: str
     video_id: str
@@ -63,7 +63,7 @@ def download_audio(youtube_link: str, filename: str) -> str:
         "logger": get_logger("youtube_dl.YoutubeDL"),
         "progress_hooks": [download_process_hook],
     }
-    with youtube_dl.YoutubeDL(params) as ydl:
+    with yt_dlp.YoutubeDL(params) as ydl:
         ydl.download([youtube_link])
 
     return filename
@@ -76,7 +76,7 @@ async def get_youtube_info(youtube_link: str) -> YoutubeInfo:
     loop = asyncio.get_running_loop()
 
     try:
-        with youtube_dl.YoutubeDL({"logger": logger, "noplaylist": True}) as ydl:
+        with yt_dlp.YoutubeDL({"logger": logger, "noplaylist": True}) as ydl:
             extract_info = partial(ydl.extract_info, youtube_link, download=False)
             youtube_details = await loop.run_in_executor(None, extract_info)
 
