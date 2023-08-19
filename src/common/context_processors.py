@@ -11,5 +11,5 @@ async def podcast_items(request):
 
 
 async def mobile_app_web_view(request):
-    """ Detects requests from mobile application (It will change some view)"""
+    """Detects requests from mobile application (It will change some view)"""
     return {"mobile_app_web_view": is_mobile_app(request)}

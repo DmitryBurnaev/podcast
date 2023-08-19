@@ -1,4 +1,4 @@
-import aiotask_context as context
+# import aiotask_context as context
 import aiohttp_i18n.locale
 
 import settings
@@ -6,7 +6,7 @@ import settings
 
 # TODO: escape from using `aiohttp_i18n.i18n`
 class AioHttpGettextTranslations(aiohttp_i18n.locale._GettextTranslations):  # noqa
-    """ This singleton extends logic for jinja2 i18n support of _GettextTranslations """
+    """This singleton extends logic for jinja2 i18n support of _GettextTranslations"""
 
     __instance = None
 
@@ -27,10 +27,11 @@ class AioHttpGettextTranslations(aiohttp_i18n.locale._GettextTranslations):  # n
         Aiohttp context can contain both language as string (from cookies) or
         language as Locale obj (from user's headers)
         """
-        try:
-            current_locale = context.get("locale")
-        except ValueError:
-            current_locale = settings.LOCALES_BY_DEFAULT
+        current_locale = settings.LOCALES_BY_DEFAULT
+        # try:
+        #     current_locale = context.get("locale")
+        # except ValueError:
+        #     current_locale = settings.LOCALES_BY_DEFAULT
 
         if isinstance(current_locale, str):
             lang = current_locale
@@ -43,11 +44,11 @@ class AioHttpGettextTranslations(aiohttp_i18n.locale._GettextTranslations):  # n
         return lang
 
     def gettext(self, message):
-        """ Required method for getting translate (to current language) """
+        """Required method for getting translate (to current language)"""
         return self.translations[self.current_language].gettext(message)
 
     def ngettext(self, singular, plural, n):
-        """ Required method for getting translate in plural (to current language) """
+        """Required method for getting translate in plural (to current language)"""
         return self.translations[self.current_language].ngettext(singular, plural, n)
 
 

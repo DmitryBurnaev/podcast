@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def json_response(func):
-    """ Wrapper for view method, to return JsonResponse """
+    """Wrapper for view method, to return JsonResponse"""
 
     async def wrapped(*args, **kwargs):
         content, status = await func(*args, **kwargs)
@@ -30,7 +30,7 @@ def login_api_required(func):
 
 
 def login_required(func):
-    """ Allow only auth users """
+    """Allow only auth users"""
 
     async def wrapped(self, *args, **kwargs):
         if self.request.user is None:
@@ -42,7 +42,7 @@ def login_required(func):
 
 
 def anonymous_required(func):
-    """ Allow only anonymous users """
+    """Allow only anonymous users"""
 
     async def wrapped(self, *args, **kwargs):
         if self.request.user is not None:
@@ -54,7 +54,7 @@ def anonymous_required(func):
 
 
 def errors_wrapped(func):
-    """ Allow only anonymous users """
+    """Allow only anonymous users"""
 
     async def wrapped(self, *args, **kwargs):
         try:
@@ -77,7 +77,7 @@ def errors_wrapped(func):
 
 
 def errors_api_wrapped(func):
-    """ Allow only anonymous users """
+    """Allow only anonymous users"""
 
     async def wrapped(self, *args, **kwargs):
         try:

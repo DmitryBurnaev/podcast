@@ -4,7 +4,7 @@ from modules.auth.models import User
 
 
 async def request_user_middleware(app, handler):
-    """ Adds authorized user to each request object """
+    """Adds authorized user to each request object"""
 
     async def middleware(request):
         request.session = await get_session(request)

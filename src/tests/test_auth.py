@@ -8,6 +8,8 @@ from modules.auth.models import User, UserInvite
 from modules.auth.utils import decode_jwt, encode_jwt
 from .conftest import make_cookie
 
+pytestmark = pytest.mark.asyncio
+
 
 class TestSignInView:
     path = "/sign-in/"
@@ -242,7 +244,6 @@ class TestUserInviteApiView:
     test_email = "test@test.com"
 
     async def test_create_invite__ok(self, client, user, db_objects, mocked_auth_send):
-
         response = await client.post(self.path, data={"email": self.test_email})
         with db_objects.allow_sync():
             created_token: UserInvite = (

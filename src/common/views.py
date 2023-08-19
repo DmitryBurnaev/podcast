@@ -69,7 +69,10 @@ class BaseApiView(web.View):
                         details=f"Invalid Request {request_data}. Exception: {ex}",
                     )
 
-        elif content_type in ("multipart/form-data", "application/x-www-form-urlencoded",):
+        elif content_type in (
+            "multipart/form-data",
+            "application/x-www-form-urlencoded",
+        ):
             res_request_data = {}
             for key in request_data:
                 value = request_data.getall(key)
@@ -105,7 +108,7 @@ class BaseApiView(web.View):
 
     @staticmethod
     def model_to_dict(instance, fields: List[str] = None, exclude: List[str] = None):
-        """ Serialize model for json-friendly dict """
+        """Serialize model for json-friendly dict"""
 
         exclude = exclude or []
         field_names = fields or list(instance.__class__._meta.sorted_field_names)  # noqa

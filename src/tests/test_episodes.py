@@ -17,6 +17,8 @@ from modules.youtube.exceptions import YoutubeExtractInfoError
 from .conftest import generate_video_id, get_user_data, make_cookie
 from .mocks import MockYoutube
 
+pytestmark = pytest.mark.asyncio
+
 
 def get_session_messages(response: ClientResponse) -> List[dict]:
     try:
@@ -309,7 +311,9 @@ async def test_episodes__download__start_downloading__ok(client, podcast, episod
         assert response.status == 302
 
         rq_mock.assert_called_with(
-            tasks.download_episode, episode_id=episode.id, youtube_link=episode.watch_url,
+            tasks.download_episode,
+            episode_id=episode.id,
+            youtube_link=episode.watch_url,
         )
 
     response_messages = get_session_messages(response)
