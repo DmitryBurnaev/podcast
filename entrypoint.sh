@@ -20,7 +20,7 @@ elif [ "${APP_SERVICE}" = "test" ]
     flake8 --count && \
     cd src && \
 
-    coverage run --source="modules/" -m pytest --aiohttp-fast --aiohttp-loop=uvloop && \
+    coverage run --source="modules/" -m pytest && \
     coverage report
 
 else

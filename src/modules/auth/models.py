@@ -8,7 +8,7 @@ from modules.auth.hasher import PBKDF2PasswordHasher
 
 
 class User(BaseModel):
-    """ Simple model for save users in DB """
+    """Simple model for save users in DB"""
 
     email = peewee.CharField(max_length=32, index=True, null=False, unique=True)
     password = peewee.CharField(max_length=256, null=False)
@@ -32,7 +32,7 @@ class User(BaseModel):
 
 
 class UserInvite(BaseModel):
-    """ Simple model for save users in DB """
+    """Simple model for save users in DB"""
 
     TOKEN_MAX_LENGTH = 32
 

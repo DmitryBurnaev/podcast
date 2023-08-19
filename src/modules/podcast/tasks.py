@@ -17,10 +17,11 @@ EPISODE_DOWNLOADING_ERROR = 2
 
 
 def _update_all_rss(source_id: str):
-    """ Allows to regenerate rss for all podcasts with requested episode (by source_id) """
+    """Allows to regenerate rss for all podcasts with requested episode (by source_id)"""
 
     logger.info(
-        "Episodes with source #%s: updating rss for all podcasts included for", source_id,
+        "Episodes with source #%s: updating rss for all podcasts included for",
+        source_id,
     )
 
     affected_episodes = list(Episode.select(Episode.podcast).where(Episode.source_id == source_id))
@@ -32,7 +33,7 @@ def _update_all_rss(source_id: str):
 
 
 def _update_episode_data(source_id: str, update_data: dict):
-    """ Allows to update data for episodes (filtered by source_id)"""
+    """Allows to update data for episodes (filtered by source_id)"""
 
     logger.info("[%s] Episodes update data: %s", source_id, update_data)
     Episode.update(**update_data).where(
@@ -41,7 +42,7 @@ def _update_episode_data(source_id: str, update_data: dict):
 
 
 def _update_episodes(source_id: str, file_size: int, status: str = Episode.STATUS_PUBLISHED):
-    """ Allows to mark ALL episodes (exclude archived) with provided source_id as published """
+    """Allows to mark ALL episodes (exclude archived) with provided source_id as published"""
 
     logger.info(f"Episodes with source #{source_id}: updating states")
     update_data = {"status": status, "file_size": file_size}
@@ -54,7 +55,7 @@ def _update_episodes(source_id: str, file_size: int, status: str = Episode.STATU
 # TODO: refactor me! use class-style for this task
 # TODO: transaction atomic is need here
 def download_episode(youtube_link: str, episode_id: int):
-    """ Allows to download youtube video and recreate specific rss (by requested episode_id) """
+    """Allows to download youtube video and recreate specific rss (by requested episode_id)"""
 
     episode = Episode.get_by_id(episode_id)
     logger.info(
@@ -90,7 +91,8 @@ def download_episode(youtube_link: str, episode_id: int):
         episode.source_id,
     )
     query = Episode.update(status=Episode.STATUS_DOWNLOADING).where(
-        Episode.source_id == episode.source_id, Episode.status != Episode.STATUS_ARCHIVED,
+        Episode.source_id == episode.source_id,
+        Episode.status != Episode.STATUS_ARCHIVED,
     )
     query.execute()
 
@@ -137,7 +139,7 @@ def download_episode(youtube_link: str, episode_id: int):
 
 
 def generate_rss(podcast_id: int) -> Optional[str]:
-    """ Allows to download and recreate specific rss (by requested podcast.publish_id) """
+    """Allows to download and recreate specific rss (by requested podcast.publish_id)"""
 
     podcast = Podcast.get_by_id(podcast_id)
     logger.info("START rss generation for %s", podcast)
