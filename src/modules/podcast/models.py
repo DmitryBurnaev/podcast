@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 
 class Podcast(BaseModel):
-    """ Simple model for saving podcast in DB """
+    """Simple model for saving podcast in DB"""
 
     publish_id = peewee.CharField(unique=True, index=True, max_length=32, null=False)
     name = peewee.CharField(index=True, max_length=256, null=False)
@@ -46,15 +46,15 @@ class Podcast(BaseModel):
 
     @classmethod
     async def get_all(cls, objects, request_user_id):
-        """ Return all podcasts """
+        """Return all podcasts"""
         return await objects.execute(cls.select().where(cls.created_by_id == request_user_id))
 
     async def get_episodes_async(self, objects: peewee_async.Manager, request_user_id: int):
-        """ Return all episodes for current podcast item """
+        """Return all episodes for current podcast item"""
         return await objects.execute(self.get_episodes(request_user_id))
 
     def get_episodes(self, request_user_id: int) -> peewee.Query:
-        """ Return peewee query for """
+        """Return peewee query for"""
         return (
             Episode.select()
             .where(Episode.podcast_id == self.id, Episode.created_by_id == request_user_id)
@@ -83,7 +83,7 @@ class Podcast(BaseModel):
 
 
 class Episode(BaseModel):
-    """ Simple model for saving episodes in DB """
+    """Simple model for saving episodes in DB"""
 
     STATUS_NEW = "new"
     STATUS_DOWNLOADING = "downloading"
@@ -125,7 +125,7 @@ class Episode(BaseModel):
 
     @classmethod
     async def get_in_progress(cls, objects, user_id) -> peewee.Query:
-        """ Return downloading episodes """
+        """Return downloading episodes"""
         return await objects.execute(
             cls.select()
             .where(cls.status.in_(cls.PROGRESS_STATUSES), cls.created_by_id == user_id)

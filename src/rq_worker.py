@@ -15,8 +15,7 @@ logger = get_logger("rq.worker")
 
 
 def run_worker():
-    """ Allows to run RQ worker for consuming background tasks (like downloading youtube tracks)
-    """
+    """Allows to run RQ worker for consuming background tasks (like downloading youtube tracks)"""
     database_init(database)
 
     if settings.SENTRY_DSN:

@@ -10,7 +10,7 @@ import aiohttp_jinja2
 import peewee
 from aiohttp import web
 from cerberus import Validator
-import youtube_dl
+import yt_dlp
 
 from app_i18n import aiohttp_translations
 from common.storage import StorageS3
@@ -144,7 +144,8 @@ class PodcastDeleteApiView(BasePodcastApiView):
         podcast_file_names = {episode.file_name for episode in episodes}
         same_file_episodes = await self.request.app.objects.execute(
             Episode.select().where(
-                Episode.podcast_id != podcast.id, Episode.file_name.in_(podcast_file_names),
+                Episode.podcast_id != podcast.id,
+                Episode.file_name.in_(podcast_file_names),
             )
         )
         exist_file_names = {episode.file_name for episode in same_file_episodes or []}
@@ -255,7 +256,10 @@ class EpisodeRetrieveUpdateApiView(BasePodcastApiView):
 
         await self.request.app.objects.update(episode)
         return redirect(
-            self.request, "episode_details", podcast_id=podcast_id, episode_id=episode.id,
+            self.request,
+            "episode_details",
+            podcast_id=podcast_id,
+            episode_id=episode.id,
         )
 
 
@@ -264,7 +268,7 @@ class EpisodeDeleteApiView(BasePodcastApiView):
     kwarg_pk = "episode_id"
 
     async def _delete_file(self, episode: Episode):
-        """ Removing file associated with requested episode """
+        """Removing file associated with requested episode"""
 
         same_file_episodes = await self.request.app.objects.execute(
             Episode.select().where(
@@ -307,7 +311,9 @@ class EpisodeDownloadApiView(BasePodcastApiView):
         episode.status = Episode.STATUS_DOWNLOADING
         await self.request.app.objects.update(episode)
         await self._enqueue_task(
-            tasks.download_episode, youtube_link=episode.watch_url, episode_id=episode.id,
+            tasks.download_episode,
+            youtube_link=episode.watch_url,
+            episode_id=episode.id,
         )
         return redirect(self.request, "progress")
 
@@ -386,17 +392,23 @@ class EpisodeCreateApiView(BasePodcastApiView):
             episode.status = Episode.STATUS_DOWNLOADING
             await self.request.app.objects.update(episode)
             await self._enqueue_task(
-                tasks.download_episode, youtube_link=episode.watch_url, episode_id=episode.id,
+                tasks.download_episode,
+                youtube_link=episode.watch_url,
+                episode_id=episode.id,
             )
             add_message(
-                self.request, f"Downloading for youtube {episode.source_id} was started.",
+                self.request,
+                f"Downloading for youtube {episode.source_id} was started.",
             )
 
         if is_mobile_app(self.request):
             return redirect(self.request, "progress")
 
         return redirect(
-            self.request, "episode_details", podcast_id=podcast_id, episode_id=str(episode.id),
+            self.request,
+            "episode_details",
+            podcast_id=podcast_id,
+            episode_id=str(episode.id),
         )
 
     def _replace_special_symbols(self, value):
@@ -537,7 +549,7 @@ class PlayListVideosApiView(BaseApiView):
         playlist_url = cleaned_data.get("playlist_url")
         loop = asyncio.get_running_loop()
 
-        with youtube_dl.YoutubeDL({"logger": self.logger, "noplaylist": False}) as ydl:
+        with yt_dlp.YoutubeDL({"logger": self.logger, "noplaylist": False}) as ydl:
             extract_info = partial(ydl.extract_info, playlist_url, download=False)
             youtube_details = await loop.run_in_executor(None, extract_info)
 

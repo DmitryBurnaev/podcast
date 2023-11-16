@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class StorageS3:
-    """ Simple client (singleton) for access to S3 bucket """
+    """Simple client (singleton) for access to S3 bucket"""
 
     __instance = None
     BUCKET_NAME = settings.S3_BUCKET_NAME
@@ -45,7 +45,9 @@ class StorageS3:
     ) -> Tuple[int, Optional[dict]]:
         try:
             logger.info(
-                "Executing request (%s) to S3 kwargs: %s", handler.__name__, handler_kwargs,
+                "Executing request (%s) to S3 kwargs: %s",
+                handler.__name__,
+                handler_kwargs,
             )
             response = handler(**handler_kwargs)
 
@@ -78,7 +80,7 @@ class StorageS3:
         callback: Callable = None,
         remote_path: str = settings.S3_BUCKET_AUDIO_PATH,
     ) -> Optional[str]:
-        """ Upload file to S3 storage """
+        """Upload file to S3 storage"""
 
         mimetype, _ = mimetypes.guess_type(src_path)
         dst_path = os.path.join(remote_path, filename)
@@ -147,5 +149,10 @@ class StorageS3:
             dst_path = os.path.join(remote_path, filename)
             await loop.run_in_executor(
                 None,
-                partial(self.__call, self.s3.delete_object, Key=dst_path, Bucket=self.BUCKET_NAME,),
+                partial(
+                    self.__call,
+                    self.s3.delete_object,
+                    Key=dst_path,
+                    Bucket=self.BUCKET_NAME,
+                ),
             )

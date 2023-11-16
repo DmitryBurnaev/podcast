@@ -19,7 +19,6 @@ from .mocks import MockYoutube, MockS3Client
 
 @db_allow_sync
 def test_generate_rss__ok(db_objects, podcast, episode_data, mocked_s3):
-
     new_episode_data = {
         **episode_data,
         **{"source_id": generate_video_id(), "status": "new"},

@@ -12,7 +12,7 @@ from hashlib import blake2b
 import peewee_async
 import pytest
 from asynctest import CoroutineMock
-from youtube_dl import YoutubeDL
+from yt_dlp import YoutubeDL
 
 from app import create_app
 from common.models import database
@@ -30,7 +30,7 @@ def get_user_data() -> Tuple[str, str]:
 
 
 def db_allow_sync(func):
-    """ Simple decorator for using peewee in sync mode """
+    """Simple decorator for using peewee in sync mode"""
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -49,7 +49,7 @@ def make_cookie(client, data):
 
 
 def generate_video_id() -> str:
-    """ Generate YouTube-like videoID """
+    """Generate YouTube-like videoID"""
     return blake2b(key=bytes(str(time.time()), encoding="utf-8"), digest_size=6).hexdigest()[:11]
 
 

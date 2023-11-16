@@ -64,7 +64,7 @@ class Publication(BaseModel):
         db_table = "publications"  # old version of table name
 
 
-models: [User, Podcast, Publication]
+models = [User, Podcast, Publication]
 
 
 def upgrade():

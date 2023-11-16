@@ -28,14 +28,15 @@ class EpisodeStatuses(str, enum.Enum):
 
 
 def render_rss_to_file(podcast_id: int) -> str:
-    """ Generate rss for Podcast and Episodes marked as "published" """
+    """Generate rss for Podcast and Episodes marked as "published" """
 
     logger.info(f"Podcast #{podcast_id}: RSS generation has been started.")
     podcast = Podcast.get_by_id(podcast_id)
 
     # noinspection PyComparisonWithNone
     episodes = podcast.get_episodes(podcast.created_by).where(
-        Episode.status == Episode.STATUS_PUBLISHED, Episode.published_at != None,  # noqa: E711
+        Episode.status == Episode.STATUS_PUBLISHED,
+        Episode.published_at != None,  # noqa: E711
     )
     context = {"episodes": episodes, "settings": settings}
     with open(os.path.join(settings.TEMPLATE_PATH, "rss", "feed_template.xml")) as fh:
@@ -52,7 +53,7 @@ def render_rss_to_file(podcast_id: int) -> str:
 
 
 def delete_file(filepath: Union[str, Path]):
-    """ Delete local file """
+    """Delete local file"""
 
     try:
         os.remove(filepath)
@@ -76,7 +77,7 @@ def get_file_size(file_path: str):
 
 
 async def check_state(episodes: Iterable[Episode]) -> list:
-    """ Allows to get info about download progress for requested episodes """
+    """Allows to get info about download progress for requested episodes"""
 
     redis_client = RedisClient()
     file_names = {redis_client.get_key_by_filename(episode.file_name) for episode in episodes}
@@ -131,10 +132,13 @@ def upload_process_hook(filename: str, chunk: int):
 
 
 def episode_process_hook(
-    status: str, filename: str, total_bytes: int = 0, processed_bytes: int = None, chunk: int = 0,
+    status: str,
+    filename: str,
+    total_bytes: int = 0,
+    processed_bytes: int = None,
+    chunk: int = 0,
 ):
-    """ Allows to handle processes of performing episode's file.
-    """
+    """Allows to handle processes of performing episode's file."""
     redis_client = RedisClient()
     filename = os.path.basename(filename)
     event_key = redis_client.get_key_by_filename(filename)
@@ -158,7 +162,7 @@ def episode_process_hook(
 
 
 def upload_episode(filename: str, src_path: str = None) -> Optional[str]:
-    """ Allows to upload src_path to Yandex.Cloud (aka AWS S3) """
+    """Allows to upload src_path to Yandex.Cloud (aka AWS S3)"""
 
     src_path = src_path or os.path.join(settings.TMP_AUDIO_PATH, filename)
     episode_process_hook(

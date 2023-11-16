@@ -9,7 +9,7 @@ from common.excpetions import SendRequestError
 
 
 def get_logger(name: str = None):
-    """ Getting configured logger """
+    """Getting configured logger"""
     logging.config.dictConfig(settings.LOGGING)
     return logging.getLogger(name or "app")
 
@@ -17,7 +17,7 @@ def get_logger(name: str = None):
 def redirect(
     request, router_name: str, *, permanent=False, url: str = None, reason="HttpFound", **kwargs
 ):
-    """ Redirect to given URL name
+    """Redirect to given URL name
 
     :param request: current request for web app
     :param router_name: router name for creating redirect url (used if url not specified)
@@ -40,7 +40,7 @@ def redirect(
 
 
 def add_message(request, message: str, title: str = None, kind: str = "info"):
-    """ Put message into session """
+    """Put message into session"""
     messages = request.session.get("messages", [])
     kind = "danger" if kind == "error" else kind
     message = {"title": title or "Podcasts informer", "message": message}
@@ -49,7 +49,7 @@ def add_message(request, message: str, title: str = None, kind: str = "info"):
 
 
 async def get_object_or_404(request, model, **kwargs):
-    """ Get object or raise HttpNotFound """
+    """Get object or raise HttpNotFound"""
     try:
         return await request.app.objects.get(model, **kwargs)
     except model.DoesNotExist:
@@ -57,7 +57,7 @@ async def get_object_or_404(request, model, **kwargs):
 
 
 def is_mobile_app(request):
-    """ Detects requests from mobile application (It will change some view)"""
+    """Detects requests from mobile application (It will change some view)"""
     user_agent = request.headers.get("User-Agent")
     return "mobile-app-web-view" in user_agent
 
@@ -74,7 +74,7 @@ def database_init(db):
 
 
 async def send_email(recipient_email: str, subject: str, html_content: str):
-    """ Allows to send email via Sendgrid API """
+    """Allows to send email via Sendgrid API"""
 
     request_url = f"https://api.sendgrid.com/{settings.SENDGRID_API_VERSION}/mail/send"
     request_data = {

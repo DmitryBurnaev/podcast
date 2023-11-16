@@ -62,7 +62,7 @@ class BaseAuthView(BaseApiView, metaclass=ABCMeta):
 
 
 class SignInView(BaseAuthView):
-    """ Simple Login user by email """
+    """Simple Login user by email"""
 
     template_name = "auth/sign_in.html"
     model_class = User
@@ -81,7 +81,7 @@ class SignInView(BaseAuthView):
     @anonymous_required
     @errors_wrapped
     async def post(self):
-        """ Check email and login """
+        """Check email and login"""
         cleaned_data = await self._validate()
         email = cleaned_data["email"]
         password = cleaned_data["password"]
@@ -110,7 +110,7 @@ class SignInView(BaseAuthView):
 
 
 class SignUpView(BaseAuthView):
-    """ Create new user in db """
+    """Create new user in db"""
 
     template_name = "auth/sign_up.html"
     model_class = User
@@ -143,7 +143,7 @@ class SignUpView(BaseAuthView):
     @json_response
     @errors_api_wrapped
     async def post(self):
-        """ Check is email unique and create new User """
+        """Check is email unique and create new User"""
         cleaned_data = await self._validate()
         email = cleaned_data["email"]
         password_1 = cleaned_data["password_1"]
@@ -158,11 +158,13 @@ class SignUpView(BaseAuthView):
             logger.error("Couldn't signup user token: %s | details: %s", invite_token, details)
             raise InvalidParameterError(details=details)
 
-        if await db_objects.count(User.select().where(User.email ** email)):
+        if await db_objects.count(User.select().where(User.email**email)):
             raise InvalidParameterError(details=f"User with email '{email}' already exists")
 
         user = await User.async_create(
-            db_objects, email=email, password=User.make_password(password_1),
+            db_objects,
+            email=email,
+            password=User.make_password(password_1),
         )
         user_invite.user = user
         user_invite.is_applied = True
@@ -175,7 +177,10 @@ class SignUpView(BaseAuthView):
     async def _get_user_invite(db_objects, invite_token: str) -> UserInvite:
         try:
             user_invite = await UserInvite.async_get(
-                db_objects, token=invite_token, is_applied=False, expired_at__gt=datetime.utcnow(),
+                db_objects,
+                token=invite_token,
+                is_applied=False,
+                expired_at__gt=datetime.utcnow(),
             )
         except UserInvite.DoesNotExist:
             logger.error(f"Couldn't get UserInvite invite_token={invite_token}.")
@@ -185,7 +190,7 @@ class SignUpView(BaseAuthView):
 
 
 class SignOutView(web.View):
-    """ Remove current user from session """
+    """Remove current user from session"""
 
     @login_required
     async def get(self):
@@ -195,7 +200,7 @@ class SignOutView(web.View):
 
 
 class InviteUserAPIView(BaseApiView):
-    """ Remove current user from session """
+    """Remove current user from session"""
 
     model_class = User
     validator = Validator(
@@ -249,7 +254,7 @@ class InviteUserAPIView(BaseApiView):
 
 
 class ResetPasswordAPIView(BaseApiView):
-    """ Remove current user from session """
+    """Remove current user from session"""
 
     model_class = User
     validator = Validator(
@@ -320,7 +325,7 @@ class ResetPasswordAPIView(BaseApiView):
 
 
 class ChangePasswordView(BaseAuthView):
-    """ Create new user in db """
+    """Create new user in db"""
 
     template_name = "auth/change_password.html"
     model_class = User
@@ -349,7 +354,7 @@ class ChangePasswordView(BaseAuthView):
     @anonymous_required
     @errors_api_wrapped
     async def post(self):
-        """ Check is email unique and create new User """
+        """Check is email unique and create new User"""
         cleaned_data = await self._validate()
         password_1 = cleaned_data["password_1"]
         password_2 = cleaned_data["password_2"]

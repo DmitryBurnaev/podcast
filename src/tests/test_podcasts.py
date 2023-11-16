@@ -8,6 +8,8 @@ from aiohttp import ClientResponse
 
 from modules.podcast.models import Podcast, Episode
 
+pytestmark = pytest.mark.asyncio
+
 
 def get_session_messages(response: ClientResponse) -> List[dict]:
     try:

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class RedisClient:
-    """ The class is used to create a redis connection in a single instance. """
+    """The class is used to create a redis connection in a single instance."""
 
     __instance = None
 

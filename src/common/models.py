@@ -8,7 +8,7 @@ database = peewee_async.PostgresqlDatabase(None)
 
 # noinspection PyProtectedMember
 class BaseModel(peewee.Model):
-    """ Base model with db Meta """
+    """Base model with db Meta"""
 
     id: int = None  # auto matching field by peewee
 

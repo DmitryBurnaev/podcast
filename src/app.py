@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import aiohttp_i18n
-import aioredis
+from redis import asyncio as aioredis
 import jinja2
 import peewee_async
 import aiohttp_jinja2
@@ -32,29 +32,28 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class PodcastWebApp(web.Application):
-    """ Extended web Application for podcast-specific logic """
+    """Extended web Application for podcast-specific logic"""
 
     rq_queue: rq.Queue = None
     objects: peewee_async.Manager = None
-    redis_pool: aioredis.ConnectionsPool = None
+    redis_pool: aioredis.ConnectionPool = None
     gettext_translation: app_i18n.AioHttpGettextTranslations = None
 
 
 async def shutdown_app(app):
-    """ Safe close server """
-    app.redis_pool.close()
-    await app.redis_pool.wait_closed()
+    """Safe close server"""
+    await app.redis_pool.disconnect()
     await app.objects.close()
 
 
 async def create_app() -> PodcastWebApp:
-    """ Prepare application """
-    redis_pool = await aioredis.create_pool(settings.REDIS_CON)
-    session_engine = SimpleCookieStorage() if settings.TEST_MODE else RedisStorage(redis_pool)
+    """Prepare application"""
+    redis_pool = aioredis.ConnectionPool(settings.REDIS_CON)
+    session_engine = SimpleCookieStorage() if settings.TEST_MODE else RedisStorage(aioredis.Redis())
     middlewares = [
         session_middleware(session_engine),
         request_user_middleware,
-        aiohttp_i18n.babel_middleware(),
+        aiohttp_i18n.babel_middleware,
     ]
 
     if settings.DEBUG:
